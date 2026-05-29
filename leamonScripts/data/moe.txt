@@ -1,0 +1,109 @@
+# ============================================================
+# Pokémon definition file for add_pokemon.py
+# Run from repo root:  python leamonScripts/add_pokemon.py leamonScripts/data/moe.txt
+# ============================================================
+
+# ── Identity ────────────────────────────────────────────────
+# NAME        : lowercase folder name used in graphics/pokemon/<NAME>/ and identifiers
+# DISPLAY_NAME: in-game name shown in text boxes  (defaults to NAME.capitalize())
+# TITLE_NAME  : capitalized form used in C symbol names (e.g. gMonFrontPic_<TITLE_NAME>)
+#               Defaults to NAME.capitalize(). Override only for multi-word names.
+NAME = moe
+# DISPLAY_NAME = Moe
+# TITLE_NAME = Moe
+
+# ── Base Stats ──────────────────────────────────────────────
+BASE_HP = 60
+BASE_ATTACK = 80
+BASE_DEFENSE = 60
+BASE_SP_ATTACK = 80
+BASE_SP_DEFENSE = 60
+BASE_SPEED = 60
+
+# ── Types ───────────────────────────────────────────────────
+# Leave TYPE2 blank or TYPE_NONE for a single-type species
+TYPE1 = TYPE_NORMAL
+# TYPE2 =
+
+# ── Catch / EXP ────────────────────────────────────────────
+CATCH_RATE = 45
+EXP_YIELD = 70
+
+# ── EV Yields ──────────────────────────────────────────────
+# Only non-zero fields are written.  Total should be ≤ 3.
+EV_HP = 0
+EV_ATTACK = 0
+EV_DEFENSE = 0
+EV_SPEED = 0
+EV_SP_ATTACK = 0
+EV_SP_DEFENSE = 0
+
+# ── Wild Held Items ─────────────────────────────────────────
+# Leave as ITEM_NONE to omit the field entirely
+ITEM_COMMON = ITEM_NONE
+ITEM_RARE = ITEM_NONE
+
+# ── Gender ──────────────────────────────────────────────────
+# Options: MON_MALE | MON_FEMALE | MON_GENDERLESS | PERCENT_FEMALE(50)
+GENDER_RATIO = PERCENT_FEMALE(50)
+
+# ── Breeding ────────────────────────────────────────────────
+EGG_CYCLES = 20
+FRIENDSHIP = STANDARD_FRIENDSHIP
+GROWTH_RATE = GROWTH_MEDIUM_FAST
+EGG_GROUP1 = EGG_GROUP_FIELD
+# EGG_GROUP2 =          # leave blank to mirror EGG_GROUP1
+
+# ── Abilities ───────────────────────────────────────────────
+ABILITY1 = ABILITY_NONE
+ABILITY2 = ABILITY_NONE
+ABILITY_HIDDEN = ABILITY_NONE
+
+# ── Misc ────────────────────────────────────────────────────
+BODY_COLOR = BODY_COLOR_BROWN
+
+# ── Pokédex Entry ───────────────────────────────────────────
+CATEGORY_NAME = Unknown
+HEIGHT = 10      # decimeters  (1.0 m = 10)
+WEIGHT = 200     # hectograms  (20.0 kg = 200)
+DESCRIPTION_1 = First line of the Pokédex entry.
+DESCRIPTION_2 = Second line.
+DESCRIPTION_3 = Third line.
+DESCRIPTION_4 = Fourth line.
+
+# ── Pokédex Sprite Scale ────────────────────────────────────
+POKEMON_SCALE = 256
+POKEMON_OFFSET = 0
+TRAINER_SCALE = 256
+TRAINER_OFFSET = 0
+
+# ── Front Sprite ────────────────────────────────────────────
+FRONT_PIC_SIZE = 64,64
+FRONT_PIC_Y_OFFSET = 0
+# ANIM_FRAMES: comma-separated (frame_index,duration) pairs
+FRONT_ANIM_FRAMES = (0,1)
+# FRONT_ANIM_ID: comment out or leave blank to omit
+# FRONT_ANIM_ID = ANIM_V_SQUISH_AND_BOUNCE
+FRONT_ANIM_DELAY = 0
+ENEMY_MON_ELEVATION = 0
+
+# ── Back Sprite ─────────────────────────────────────────────
+BACK_PIC_SIZE = 64,64
+BACK_PIC_Y_OFFSET = 0
+BACK_ANIM_ID = BACK_ANIM_NONE
+
+# ── Icon ────────────────────────────────────────────────────
+ICON_PAL_INDEX = 0
+
+# ── Pokédex Ordering ────────────────────────────────────────
+# Optional: specify which NATIONAL_DEX_XXX entry to insert BEFORE in each ordering.
+# If left blank the script appends to the end of each ordering array.
+# ALPHA_INSERT_BEFORE = NATIONAL_DEX_MONFERNO
+# WEIGHT_INSERT_BEFORE = NATIONAL_DEX_VANILLISH
+# HEIGHT_INSERT_BEFORE = NATIONAL_DEX_PIDGEOT
+
+# ── Level-Up Learnset ───────────────────────────────────────
+# Format: level,MOVE_NAME  (one per line after LEARNSET:)
+LEARNSET:
+1,MOVE_TACKLE
+1,MOVE_GROWL
