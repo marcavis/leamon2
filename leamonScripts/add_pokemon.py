@@ -22,7 +22,7 @@ The script refuses to run (with clear error messages) unless:
 """
 
 import sys
-import os
+import argparse
 import re
 from pathlib import Path
 
@@ -166,7 +166,9 @@ def read_file(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def write_file(path: Path, content: str) -> None:
+def write_file(path: Path, content: str, dry_run: bool = False) -> None:
+    if dry_run:
+        return
     path.write_text(content, encoding="utf-8")
 
 
@@ -229,7 +231,7 @@ def parse_anim_frames(raw: str) -> list[tuple[int, int]]:
 
 # ─── File edit functions ───────────────────────────────────────────────────────
 
-def edit_species_h(name: str, upper: str) -> None:
+def edit_species_h(name: str, upper: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "include" / "constants" / "species.h"
     content = read_file(path)
 
@@ -260,11 +262,12 @@ def edit_species_h(name: str, upper: str) -> None:
         content,
     )
 
-    write_file(path, content)
-    print(f"  [OK] include/constants/species.h           SPECIES_{upper} = {new_num}")
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} include/constants/species.h           SPECIES_{upper} = {new_num}")
 
 
-def edit_pokedex_h(upper: str) -> None:
+def edit_pokedex_h(upper: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "include" / "constants" / "pokedex.h"
     content = read_file(path)
 
@@ -316,11 +319,12 @@ def edit_pokedex_h(upper: str) -> None:
         content,
     )
 
-    write_file(path, content)
-    print(f"  [OK] include/constants/pokedex.h           NATIONAL_DEX_{upper}, HOENN_DEX_{upper}")
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} include/constants/pokedex.h           NATIONAL_DEX_{upper}, HOENN_DEX_{upper}")
 
 
-def edit_graphics_h(name: str, title: str) -> None:
+def edit_graphics_h(name: str, title: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "src" / "data" / "graphics" / "pokemon.h"
     content = read_file(path)
 
@@ -336,11 +340,12 @@ def edit_graphics_h(name: str, title: str) -> None:
 
     # Append after the last line of the file (no trailing newline guard)
     content = content.rstrip() + "\n" + sprite_block + "\n"
-    write_file(path, content)
-    print(f"  [OK] src/data/graphics/pokemon.h           gMonFrontPic_{title}, ...")
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} src/data/graphics/pokemon.h           gMonFrontPic_{title}, ...")
 
 
-def edit_learnsets_h(upper: str, title: str, learnset_lines: list[str]) -> None:
+def edit_learnsets_h(upper: str, title: str, learnset_lines: list[str], dry_run: bool = False) -> None:
     path = REPO_ROOT / "src" / "data" / "pokemon" / "level_up_learnsets" / "leamon_learnsets.h"
     content = read_file(path)
 
@@ -361,11 +366,12 @@ def edit_learnsets_h(upper: str, title: str, learnset_lines: list[str]) -> None:
     )
 
     content = content.rstrip() + "\n" + learnset_block + "\n"
-    write_file(path, content)
-    print(f"  [OK] leamon_learnsets.h                    s{title}LevelUpLearnset")
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} leamon_learnsets.h                    s{title}LevelUpLearnset")
 
 
-def edit_species_info_h(data: dict, upper: str, title: str) -> None:
+def edit_species_info_h(data: dict, upper: str, title: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "src" / "data" / "pokemon" / "species_info.h"
     content = read_file(path)
 
@@ -492,11 +498,12 @@ def edit_species_info_h(data: dict, upper: str, title: str) -> None:
         raise ValueError(f"Anchor not found in species_info.h:\n  {anchor!r}")
 
     content = insert_before_anchor(content, anchor, entry)
-    write_file(path, content)
-    print(f"  [OK] src/data/pokemon/species_info.h       [SPECIES_{upper}]")
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} src/data/pokemon/species_info.h       [SPECIES_{upper}]")
 
 
-def edit_pokedex_orders_h(data: dict, upper: str) -> None:
+def edit_pokedex_orders_h(data: dict, upper: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "src" / "data" / "pokemon" / "pokedex_orders.h"
     content = read_file(path)
 
@@ -521,11 +528,12 @@ def edit_pokedex_orders_h(data: dict, upper: str) -> None:
             # Append before the closing }; of this array
             content = insert_before_closing_brace(content, array_decl, entry)
 
-    write_file(path, content)
-    print(f"  [OK] src/data/pokemon/pokedex_orders.h     {entry} (Alphabetical / Weight / Height)")
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} src/data/pokemon/pokedex_orders.h     {entry} (Alphabetical / Weight / Height)")
 
 
-def edit_pokemon_c(upper: str) -> None:
+def edit_pokemon_c(upper: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "src" / "pokemon.c"
     content = read_file(path)
 
@@ -533,18 +541,29 @@ def edit_pokemon_c(upper: str) -> None:
     array_decl = "sHoennToNationalOrder["
     content = insert_before_closing_brace(content, array_decl, f"HOENN_TO_NATIONAL({upper})")
 
-    write_file(path, content)
-    print(f"  [OK] src/pokemon.c                         HOENN_TO_NATIONAL({upper})")
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} src/pokemon.c                         HOENN_TO_NATIONAL({upper})")
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    if len(sys.argv) != 2:
-        print("Usage: python leamonScripts/add_pokemon.py leamonScripts/data/<name>.txt")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Add a custom Pokemon from a definition file"
+    )
+    parser.add_argument(
+        "definition_file",
+        help="Path to definition txt (example: leamonScripts/data/moe.txt)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and preview all edits without writing files",
+    )
+    args = parser.parse_args()
 
-    def_path = Path(sys.argv[1]).resolve()
+    def_path = Path(args.definition_file).resolve()
     if not def_path.exists():
         print(f"ERROR: Definition file not found: {def_path}")
         sys.exit(1)
@@ -554,6 +573,8 @@ def main() -> None:
     data = parse_definition(def_path)
     name, upper, title = derive_names(data, def_path)
     print(f"  Pokémon: {name}  (SPECIES_{upper}, gMonFrontPic_{title})")
+    if args.dry_run:
+        print("  Mode: dry run (no files will be written)")
 
     # ── Step 1: Check graphics ─────────────────────────────────────────────────
     print(f"\nChecking graphics/pokemon/{name}/ ...")
@@ -572,17 +593,17 @@ def main() -> None:
         sys.exit(1)
 
     # ── Step 4: Apply all file edits ───────────────────────────────────────────
-    print("\nApplying edits ...")
+    print("\nApplying edits ..." if not args.dry_run else "\nSimulating edits (--dry-run) ...")
     errors = []
 
     for fn, args, desc in [
-        (edit_species_h,       (name, upper),        "include/constants/species.h"),
-        (edit_pokedex_h,       (upper,),             "include/constants/pokedex.h"),
-        (edit_graphics_h,      (name, title),        "src/data/graphics/pokemon.h"),
-        (edit_learnsets_h,     (upper, title, data["_LEARNSET_LINES"]), "leamon_learnsets.h"),
-        (edit_species_info_h,  (data, upper, title), "src/data/pokemon/species_info.h"),
-        (edit_pokedex_orders_h,(data, upper),        "src/data/pokemon/pokedex_orders.h"),
-        (edit_pokemon_c,       (upper,),             "src/pokemon.c"),
+        (edit_species_h,       (name, upper, args.dry_run),                      "include/constants/species.h"),
+        (edit_pokedex_h,       (upper, args.dry_run),                            "include/constants/pokedex.h"),
+        (edit_graphics_h,      (name, title, args.dry_run),                      "src/data/graphics/pokemon.h"),
+        (edit_learnsets_h,     (upper, title, data["_LEARNSET_LINES"], args.dry_run), "leamon_learnsets.h"),
+        (edit_species_info_h,  (data, upper, title, args.dry_run),               "src/data/pokemon/species_info.h"),
+        (edit_pokedex_orders_h,(data, upper, args.dry_run),                      "src/data/pokemon/pokedex_orders.h"),
+        (edit_pokemon_c,       (upper, args.dry_run),                            "src/pokemon.c"),
     ]:
         try:
             fn(*args)
@@ -598,6 +619,11 @@ def main() -> None:
             print(f"  • {e}")
         sys.exit(1)
     else:
+        if args.dry_run:
+            print(f"Dry run complete. SPECIES_{upper} passed validation and all edits are ready.")
+            print("No files were modified.")
+            return
+
         print(f"Done! SPECIES_{upper} has been added to all source files.")
         print("Reminders:")
         print("  • Add a cry:        see docs tutorial section 5.")
