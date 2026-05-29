@@ -629,6 +629,7 @@ static const enum NationalDexOrder sHoennToNationalOrder[HOENN_DEX_COUNT - 1] =
     HOENN_TO_NATIONAL(RAYQUAZA),
     HOENN_TO_NATIONAL(JIRACHI),
     HOENN_TO_NATIONAL(DEOXYS),
+    HOENN_TO_NATIONAL(YURIA),
 };
 
 const struct SpindaSpot gSpindaSpotGraphics[] =
@@ -975,6 +976,8 @@ const struct NatureInfo gNaturesInfo[NUM_NATURES] =
 #elif P_LVL_UP_LEARNSETS >= GEN_1
 #include "data/pokemon/level_up_learnsets/gen_1.h" // Yellow
 #endif
+
+#include "data/pokemon/level_up_learnsets/leamon_learnsets.h"
 
 #include "data/pokemon/teachable_learnsets.h"
 #include "data/pokemon/egg_moves.h"

@@ -174,6 +174,65 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .iconPalIndex = 1,
     },
 
+    [SPECIES_YURIA] =
+    {
+        .baseHP        = 40,
+        .baseAttack    = 70,
+        .baseDefense   = 30,
+        .baseSpeed     = 25,
+        .baseSpAttack  = 40,
+        .baseSpDefense = 85,
+        .types = MON_TYPES(TYPE_DARK),
+        .catchRate = 255,
+        .expYield = 67,
+        .evYield_Attack = 1,
+        .genderRatio = PERCENT_FEMALE(50),
+        .eggCycles = 20,
+        .friendship = STANDARD_FRIENDSHIP,
+        .growthRate = GROWTH_MEDIUM_FAST,
+        .eggGroups = MON_EGG_GROUPS(EGG_GROUP_NO_EGGS_DISCOVERED),
+        .abilities = { ABILITY_NONE, ABILITY_CURSED_BODY, ABILITY_DAMP },
+        .bodyColor = BODY_COLOR_BLACK,
+        .speciesName = _("Yuria"),
+        .cryId = CRY_NONE,
+        .natDexNum = NATIONAL_DEX_NONE,
+        .categoryName = _("Unknown"),
+        .height = 15,
+        .weight = 410,
+        .description = COMPOUND_STRING(
+            "Always looking to score.\n"
+            "ononono.\n"
+            "nonononon\n"
+            "onononon."),
+        .pokemonScale = 256,
+        .pokemonOffset = 0,
+        .trainerScale = 256,
+        .trainerOffset = 0,
+        .frontPic = gMonFrontPic_Yuria,
+        .frontPicSize = MON_COORDS_SIZE(64, 64),
+        .frontPicYOffset = 0,
+        .frontAnimFrames = ANIM_FRAMES(
+            ANIMCMD_FRAME(0,1),
+        ),
+        //.frontAnimId = ANIM_V_SQUISH_AND_BOUNCE,
+        .backPic = gMonBackPic_Yuria,
+        .backPicSize = MON_COORDS_SIZE(64, 64),
+        .backPicYOffset = 7,
+        .backAnimId = BACK_ANIM_NONE,
+        .palette = gMonPalette_Yuria,
+        .shinyPalette = gMonShinyPalette_Yuria,
+        .iconSprite = gMonIcon_Yuria,
+        .iconPalIndex = 0,
+        FOOTPRINT(Yuria)
+        .levelUpLearnset = sYuriaLevelUpLearnset,
+        .teachableLearnset = sNoneTeachableLearnset,
+        .evolutions = EVOLUTION({EVO_LEVEL, 100, SPECIES_NONE},
+                                {EVO_ITEM, ITEM_MOOMOO_MILK, SPECIES_NONE}),
+        //.formSpeciesIdTable = sNoneFormSpeciesIdTable,
+        //.formChangeTable = sNoneFormChangeTable,
+        //.perfectIVCount = NUM_STATS,
+    },
+
     /* You may add any custom species below this point based on the following structure: */
 
     /*
