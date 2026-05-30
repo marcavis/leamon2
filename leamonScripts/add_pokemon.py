@@ -439,6 +439,15 @@ def edit_species_info_h(data: dict, upper: str, title: str, dry_run: bool = Fals
     enemy_elev = int(data.get("ENEMY_MON_ELEVATION", 0))
     elev_line = f"        .enemyMonElevation = {enemy_elev},\n" if enemy_elev else ""
 
+    shadow_size = data.get("SHADOW_SIZE", "").strip()
+    shadow_x = int(data.get("SHADOW_X_OFFSET", 0))
+    shadow_y = int(data.get("SHADOW_Y_OFFSET", 0))
+    shadow_line = (
+        f"{tab}{tab}SHADOW({shadow_x}, {shadow_y}, {shadow_size})\n"
+        if shadow_size
+        else ""
+    )
+
     # ── Build the full entry ──────────────────────────────────────────────────
     tab = "    "
     entry = f"""
@@ -487,6 +496,7 @@ def edit_species_info_h(data: dict, upper: str, title: str, dry_run: bool = Fals
 {tab}{tab}.shinyPalette = gMonShinyPalette_{title},
 {tab}{tab}.iconSprite = gMonIcon_{title},
 {tab}{tab}.iconPalIndex = {data['ICON_PAL_INDEX']},
+{shadow_line}
 {tab}{tab}FOOTPRINT({title})
 {tab}{tab}.levelUpLearnset = s{title}LevelUpLearnset,
 {tab}{tab}.teachableLearnset = sNoneTeachableLearnset,

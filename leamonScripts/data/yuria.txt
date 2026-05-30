@@ -48,7 +48,13 @@ TRAINER_OFFSET = 0
 FRONT_PIC_SIZE = 64,64
 FRONT_PIC_Y_OFFSET = 0
 BACK_PIC_SIZE = 64,64
-BACK_PIC_Y_OFFSET = 7
+BACK_PIC_Y_OFFSET = 0
+
+# Battle shadow tuning (optional; consumed by add_pokemon.py)
+# Negative X moves shadow left; positive Y moves it down toward feet.
+SHADOW_X_OFFSET = -2
+SHADOW_Y_OFFSET = 8
+SHADOW_SIZE = SHADOW_SIZE_S
 
 FRONT_ANIM_FRAMES = (0,1)
 BACK_ANIM_ID = BACK_ANIM_NONE

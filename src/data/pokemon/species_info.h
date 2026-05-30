@@ -217,12 +217,13 @@ const struct SpeciesInfo gSpeciesInfo[] =
         //.frontAnimId = ANIM_V_SQUISH_AND_BOUNCE,
         .backPic = gMonBackPic_Yuria,
         .backPicSize = MON_COORDS_SIZE(64, 64),
-        .backPicYOffset = 7,
+        .backPicYOffset = 0,
         .backAnimId = BACK_ANIM_NONE,
         .palette = gMonPalette_Yuria,
         .shinyPalette = gMonShinyPalette_Yuria,
         .iconSprite = gMonIcon_Yuria,
         .iconPalIndex = 0,
+        SHADOW(-2, 8, SHADOW_SIZE_S)
         FOOTPRINT(Yuria)
         .levelUpLearnset = sYuriaLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
