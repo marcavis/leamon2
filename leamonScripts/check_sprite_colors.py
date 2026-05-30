@@ -64,6 +64,52 @@ def write_rgba_png(png_path: Path, width: int, height: int, pixels: list[RgbaCol
     png_path.write_bytes(png_data)
 
 
+def write_indexed_png(
+    png_path: Path,
+    width: int,
+    height: int,
+    pixels: list[RgbaColor],
+    palette_rgb: list[tuple[int, int, int]],
+) -> None:
+    if len(pixels) != width * height:
+        raise ValueError("Pixel count does not match image dimensions")
+    if len(palette_rgb) == 0 or len(palette_rgb) > 16:
+        raise ValueError("Indexed writer expects 1..16 palette entries")
+
+    palette_index = {rgb: idx for idx, rgb in enumerate(palette_rgb)}
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 4, 3, 0, 0, 0)
+    plte = bytearray()
+    for r, g, b in palette_rgb:
+        plte.extend((r, g, b))
+
+    raw_rows = bytearray()
+    for row_index in range(height):
+        raw_rows.append(0)
+        start = row_index * width
+        end = start + width
+        row = pixels[start:end]
+        idx_values = []
+        for px in row:
+            rgb = px[:3]
+            if rgb not in palette_index:
+                raise ValueError(f"Pixel color {rgb} missing from palette")
+            idx_values.append(palette_index[rgb])
+
+        for i in range(0, len(idx_values), 2):
+            hi = idx_values[i]
+            lo = idx_values[i + 1] if i + 1 < len(idx_values) else 0
+            raw_rows.append((hi << 4) | lo)
+
+    idat = zlib.compress(bytes(raw_rows))
+    png_data = bytearray(PNG_SIGNATURE)
+    png_data.extend(png_chunk(b"IHDR", ihdr))
+    png_data.extend(png_chunk(b"PLTE", bytes(plte)))
+    png_data.extend(png_chunk(b"IDAT", idat))
+    png_data.extend(png_chunk(b"IEND", b""))
+    png_path.write_bytes(png_data)
+
+
 def paeth_predictor(a: int, b: int, c: int) -> int:
     p = a + b - c
     pa = abs(p - a)
@@ -617,14 +663,14 @@ def analyze_paired_source_sprites(
                     front_filled_pixels,
                 )
 
-                write_rgba_png(front_target, front_out_w, front_out_h, front_out_pixels)
-                write_rgba_png(back_target, back_src_w, back_src_h, back_filled_pixels)
                 palette_colors = build_shared_palette_colors(
                     [color for color, _count in front_sorted],
                     [color for color, _count in back_sorted],
                     DEFAULT_BG_RGB,
                     16,
                 )
+                write_indexed_png(front_target, front_out_w, front_out_h, front_out_pixels, palette_colors)
+                write_indexed_png(back_target, back_src_w, back_src_h, back_filled_pixels, palette_colors)
                 write_jasc_palette(normal_pal_target, palette_colors)
                 print(
                     f"    promoted: {front_target.name} ({front_out_w}x{front_out_h}), "
