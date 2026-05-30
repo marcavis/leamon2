@@ -15,17 +15,51 @@ This script reads PNG files directly (no Pillow dependency) and reports:
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import math
 import struct
 import sys
+from typing import TypeAlias
 import zlib
 from pathlib import Path
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+MAGENTA = (255, 0, 255)
+
+RgbaColor: TypeAlias = tuple[int, int, int, int]
 
 
 class PngDecodeError(Exception):
     pass
+
+
+def png_chunk(chunk_type: bytes, chunk_data: bytes) -> bytes:
+    length = struct.pack(">I", len(chunk_data))
+    crc = zlib.crc32(chunk_type)
+    crc = zlib.crc32(chunk_data, crc)
+    return length + chunk_type + chunk_data + struct.pack(">I", crc & 0xFFFFFFFF)
+
+
+def write_rgba_png(png_path: Path, width: int, height: int, pixels: list[RgbaColor]) -> None:
+    if len(pixels) != width * height:
+        raise ValueError("Pixel count does not match image dimensions")
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
+
+    raw_rows = bytearray()
+    for row_index in range(height):
+        raw_rows.append(0)
+        start = row_index * width
+        end = start + width
+        for r, g, b, a in pixels[start:end]:
+            raw_rows.extend((r, g, b, a))
+
+    idat = zlib.compress(bytes(raw_rows))
+    png_data = bytearray(PNG_SIGNATURE)
+    png_data.extend(png_chunk(b"IHDR", ihdr))
+    png_data.extend(png_chunk(b"IDAT", idat))
+    png_data.extend(png_chunk(b"IEND", b""))
+    png_path.write_bytes(png_data)
 
 
 def paeth_predictor(a: int, b: int, c: int) -> int:
@@ -65,7 +99,7 @@ def unpack_sub_byte_samples(row: bytes, width: int, bit_depth: int) -> list[int]
     return samples
 
 
-def parse_png_colors(png_path: Path) -> set[tuple[int, int, int, int]]:
+def parse_png_rgba_pixels(png_path: Path) -> tuple[int, int, list[RgbaColor]]:
     data = png_path.read_bytes()
     if not data.startswith(PNG_SIGNATURE):
         raise PngDecodeError("Not a PNG file")
@@ -106,7 +140,10 @@ def parse_png_colors(png_path: Path) -> set[tuple[int, int, int, int]]:
         elif chunk_type == b"PLTE":
             if length % 3 != 0:
                 raise PngDecodeError("Invalid PLTE chunk length")
-            palette = [tuple(chunk_data[i : i + 3]) for i in range(0, length, 3)]
+            palette = [
+                (chunk_data[i], chunk_data[i + 1], chunk_data[i + 2])
+                for i in range(0, length, 3)
+            ]
         elif chunk_type == b"tRNS":
             palette_alpha = list(chunk_data)
         elif chunk_type == b"IDAT":
@@ -183,7 +220,7 @@ def parse_png_colors(png_path: Path) -> set[tuple[int, int, int, int]]:
         rows.append(row_bytes)
         prev_row = row_bytes
 
-    colors: set[tuple[int, int, int, int]] = set()
+    pixels: list[RgbaColor] = []
 
     for row in rows:
         if color_type == 3:
@@ -198,7 +235,7 @@ def parse_png_colors(png_path: Path) -> set[tuple[int, int, int, int]]:
                     a = palette_alpha[idx]
                 else:
                     a = 255
-                colors.add((r, g, b, a))
+                pixels.append((r, g, b, a))
         elif color_type == 2:
             if bit_depth not in (8, 16):
                 raise PngDecodeError(f"Unsupported RGB bit depth: {bit_depth}")
@@ -208,7 +245,7 @@ def parse_png_colors(png_path: Path) -> set[tuple[int, int, int, int]]:
                     r, g, b = row[i], row[i + 1], row[i + 2]
                 else:
                     r, g, b = row[i], row[i + 2], row[i + 4]
-                colors.add((r, g, b, 255))
+                pixels.append((r, g, b, 255))
         elif color_type == 6:
             if bit_depth not in (8, 16):
                 raise PngDecodeError(f"Unsupported RGBA bit depth: {bit_depth}")
@@ -218,13 +255,13 @@ def parse_png_colors(png_path: Path) -> set[tuple[int, int, int, int]]:
                     r, g, b, a = row[i], row[i + 1], row[i + 2], row[i + 3]
                 else:
                     r, g, b, a = row[i], row[i + 2], row[i + 4], row[i + 6]
-                colors.add((r, g, b, a))
+                pixels.append((r, g, b, a))
         elif color_type == 0:
             if bit_depth not in (1, 2, 4, 8, 16):
                 raise PngDecodeError(f"Unsupported grayscale bit depth: {bit_depth}")
             values = unpack_sub_byte_samples(row, width, bit_depth) if bit_depth < 8 else list(row[:width])
             for v in values:
-                colors.add((v, v, v, 255))
+                pixels.append((v, v, v, 255))
         elif color_type == 4:
             if bit_depth not in (8, 16):
                 raise PngDecodeError(f"Unsupported grayscale-alpha bit depth: {bit_depth}")
@@ -234,13 +271,38 @@ def parse_png_colors(png_path: Path) -> set[tuple[int, int, int, int]]:
                     gray, a = row[i], row[i + 1]
                 else:
                     gray, a = row[i], row[i + 2]
-                colors.add((gray, gray, gray, a))
+                pixels.append((gray, gray, gray, a))
 
-    return colors
+    return width, height, pixels
+
+
+def create_testing_ground_image(
+    png_path: Path,
+    width: int,
+    height: int,
+    pixels: list[RgbaColor],
+    colors_to_mark: set[RgbaColor],
+) -> Path:
+    marked_pixels = [
+        (MAGENTA[0], MAGENTA[1], MAGENTA[2], pixel[3]) if pixel in colors_to_mark else pixel
+        for pixel in pixels
+    ]
+
+    combined_pixels: list[RgbaColor] = []
+    for row_index in range(height):
+        start = row_index * width
+        end = start + width
+        combined_pixels.extend(pixels[start:end])
+        combined_pixels.extend(marked_pixels[start:end])
+
+    output_path = png_path.with_name(f"testing-ground-{png_path.stem}.png")
+    write_rgba_png(output_path, width * 2, height, combined_pixels)
+    return output_path
 
 
 def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> int:
     png_files = sorted(folder.glob("*.png"))
+    png_files = [p for p in png_files if not p.name.startswith("testing-ground-")]
     if not check_gba:
         png_files = [p for p in png_files if not p.stem.endswith("_gba")]
 
@@ -254,12 +316,13 @@ def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> 
     over_limit = False
     for png_path in png_files:
         try:
-            colors = parse_png_colors(png_path)
+            width, height, pixels = parse_png_rgba_pixels(png_path)
         except Exception as exc:
             print(f"{png_path.name}: ERROR - {exc}")
             over_limit = True
             continue
 
+        colors = set(pixels)
         visible_colors = {c for c in colors if c[3] > 0}
         transparent_colors = {c for c in colors if c[3] == 0}
 
@@ -272,6 +335,31 @@ def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> 
             f"{png_path.name}: visible={len(visible_colors):2d}, "
             f"total_rgba={len(colors):2d}, transparent_variants={len(transparent_colors):2d} -> {status}"
         )
+
+        if len(visible_colors) > limit:
+            visible_counts = Counter(pixel for pixel in pixels if pixel[3] > 0)
+            sorted_counts = sorted(
+                visible_counts.items(),
+                key=lambda item: (-item[1], item[0]),
+            )
+            print("  Colors by usage (descending):")
+            for color, count in sorted_counts:
+                print(f"    {count:4d} px  {color}")
+
+            colors_to_mark = {color for color, _count in sorted_counts[limit:]}
+            testing_ground_path = create_testing_ground_image(
+                png_path,
+                width,
+                height,
+                pixels,
+                colors_to_mark,
+            )
+            if any(color[:3] == MAGENTA for color in visible_colors):
+                print(f"  Warning: {png_path.name} already uses magenta {MAGENTA}.")
+            print(
+                f"  Testing ground: {testing_ground_path.name} "
+                f"(right half marks {len(colors_to_mark)} least-used over-budget colors in {MAGENTA})"
+            )
 
     print(f"\nVisible-color limit: <= {limit}")
     if over_limit:
