@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 import math
+import shutil
 import struct
 import sys
 from typing import TypeAlias
@@ -26,6 +27,7 @@ from pathlib import Path
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAGENTA = (255, 0, 255)
+DEFAULT_BG_RGB = (152, 208, 160)
 
 RgbaColor: TypeAlias = tuple[int, int, int, int]
 
@@ -410,6 +412,55 @@ def write_testing_grounds_combined(
     return combined_path
 
 
+def build_shared_palette_colors(
+    front_sorted: list[RgbaColor],
+    back_sorted: list[RgbaColor],
+    background_rgb: tuple[int, int, int],
+    max_entries: int = 16,
+) -> list[tuple[int, int, int]]:
+    ordered: list[tuple[int, int, int]] = [background_rgb]
+    seen: set[tuple[int, int, int]] = {background_rgb}
+
+    for color in front_sorted:
+        rgb = color[:3]
+        if rgb not in seen:
+            ordered.append(rgb)
+            seen.add(rgb)
+
+    for color in back_sorted:
+        rgb = color[:3]
+        if rgb not in seen:
+            ordered.append(rgb)
+            seen.add(rgb)
+
+    if len(ordered) > max_entries:
+        raise ValueError(f"Palette has {len(ordered)} colors, exceeds {max_entries} entries")
+
+    while len(ordered) < max_entries:
+        ordered.append((0, 0, 0))
+
+    return ordered
+
+
+def write_jasc_palette(pal_path: Path, colors_rgb: list[tuple[int, int, int]]) -> None:
+    lines = ["JASC-PAL", "0100", str(len(colors_rgb))]
+    lines.extend(f"{r} {g} {b}" for r, g, b in colors_rgb)
+    pal_path.write_text("\n".join(lines) + "\n", encoding="ascii")
+
+
+def prompt_yes_no(prompt: str) -> bool:
+    try:
+        answer = input(f"{prompt} [y/N]: ").strip().lower()
+    except EOFError:
+        return False
+    return answer in {"y", "yes"}
+
+
+def should_offer_promote(front_path: Path) -> bool:
+    excluded_stems = {"anim_front", "front", "icon", "overworld", "footprint"}
+    return front_path.stem not in excluded_stems and not front_path.stem.startswith("testing-ground")
+
+
 def color_distance_sq(a: RgbaColor, b: RgbaColor) -> int:
     dr = a[0] - b[0]
     dg = a[1] - b[1]
@@ -449,6 +500,7 @@ def analyze_paired_source_sprites(
     front_pixels: list[RgbaColor],
     front_limit: int,
     folder: Path,
+    offer_promote: bool,
 ) -> None:
     back_path = pair_candidate_path(front_path)
     if back_path is None or not back_path.exists():
@@ -500,6 +552,7 @@ def analyze_paired_source_sprites(
     )
 
     back_visible_counts = Counter(pixel for pixel in back_pixels if pixel[3] > 0)
+    back_sorted = sorted(back_visible_counts.items(), key=lambda item: (-item[1], item[0]))
     back_only_sorted = sorted(
         back_only_visible,
         key=lambda color: (-back_visible_counts[color], color),
@@ -524,6 +577,31 @@ def analyze_paired_source_sprites(
         )
         print(f"    promote with shared palette: {folder / 'normal.pal'}")
         print(f"    target files: anim_front.png, back.png")
+
+        if offer_promote and should_offer_promote(front_path):
+            front_target = folder / "anim_front.png"
+            back_target = folder / "back.png"
+            normal_pal_target = folder / "normal.pal"
+            print(
+                f"    palette slot 0 (background/transparent key): {DEFAULT_BG_RGB[0]} {DEFAULT_BG_RGB[1]} {DEFAULT_BG_RGB[2]}"
+            )
+            if prompt_yes_no(
+                "    Promote this pair (overwrite anim_front.png/back.png and regenerate normal.pal)?"
+            ):
+                shutil.copyfile(front_path, front_target)
+                shutil.copyfile(back_path, back_target)
+                palette_colors = build_shared_palette_colors(
+                    [color for color, _count in front_sorted],
+                    [color for color, _count in back_sorted],
+                    DEFAULT_BG_RGB,
+                    16,
+                )
+                write_jasc_palette(normal_pal_target, palette_colors)
+                print(
+                    f"    promoted: {front_target.name}, {back_target.name}, {normal_pal_target.name}"
+                )
+            else:
+                print("    promote skipped")
     else:
         print(
             f"    shared normal.pal fits the limit: no (needs {len(shared_visible)} colors)"
@@ -545,7 +623,7 @@ def analyze_paired_source_sprites(
         print(f"    combined testing grounds: {combined_path.name}")
 
 
-def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> int:
+def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool, offer_promote: bool) -> int:
     png_files = sorted(folder.glob("*.png"))
     png_files = [p for p in png_files if not p.name.startswith("testing-ground")]
     if not check_gba:
@@ -623,7 +701,7 @@ def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> 
                 )
 
         if not png_path.stem.endswith("back"):
-            analyze_paired_source_sprites(png_path, width, height, pixels, limit, folder)
+            analyze_paired_source_sprites(png_path, width, height, pixels, limit, folder, offer_promote)
 
     print(f"\nVisible-color limit: <= {limit}")
     if over_limit:
@@ -659,6 +737,11 @@ def main() -> int:
         action="store_true",
         help="Include *_gba.png files in the check (default: ignored)",
     )
+    parser.add_argument(
+        "--no-promote-offer",
+        action="store_true",
+        help="Do not prompt to promote <foo>.png + <foo>back.png into anim_front.png/back.png and regenerate normal.pal",
+    )
     args = parser.parse_args()
 
     if args.path is None and not args.pokemon:
@@ -680,7 +763,7 @@ def main() -> int:
         print(f"Not a folder: {folder}")
         return 2
 
-    return analyze_pokemon_sprite_folder(folder, args.limit, args.check_gba)
+    return analyze_pokemon_sprite_folder(folder, args.limit, args.check_gba, not args.no_promote_offer)
 
 
 if __name__ == "__main__":
