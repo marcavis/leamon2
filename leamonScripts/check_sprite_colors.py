@@ -10,6 +10,7 @@ This script reads PNG files directly (no Pillow dependency) and reports:
 - Total unique RGBA colors
 - Unique visible colors (alpha > 0)
 - Whether visible colors exceed the 15-color sprite limit
+- Whether a paired source sprite and back sprite can share one normal palette
 """
 
 from __future__ import annotations
@@ -281,23 +282,106 @@ def create_testing_ground_image(
     width: int,
     height: int,
     pixels: list[RgbaColor],
-    colors_to_mark: set[RgbaColor],
+    unpopular_colors: set[RgbaColor],
+    unpopular_to_popular_map: dict[RgbaColor, RgbaColor],
 ) -> Path:
-    marked_pixels = [
-        (MAGENTA[0], MAGENTA[1], MAGENTA[2], pixel[3]) if pixel in colors_to_mark else pixel
+    magenta_pixels = [
+        (MAGENTA[0], MAGENTA[1], MAGENTA[2], pixel[3]) if pixel in unpopular_colors else pixel
         for pixel in pixels
     ]
+    remapped_pixels = [unpopular_to_popular_map.get(pixel, pixel) for pixel in pixels]
 
     combined_pixels: list[RgbaColor] = []
     for row_index in range(height):
         start = row_index * width
         end = start + width
+        # Left: unpopular colors highlighted as magenta.
+        combined_pixels.extend(magenta_pixels[start:end])
+        # Middle: original sprite.
         combined_pixels.extend(pixels[start:end])
-        combined_pixels.extend(marked_pixels[start:end])
+        # Right: unpopular colors remapped to nearest popular colors.
+        combined_pixels.extend(remapped_pixels[start:end])
 
     output_path = png_path.with_name(f"testing-ground-{png_path.stem}.png")
-    write_rgba_png(output_path, width * 2, height, combined_pixels)
+    write_rgba_png(output_path, width * 3, height, combined_pixels)
     return output_path
+
+
+def color_distance_sq(a: RgbaColor, b: RgbaColor) -> int:
+    dr = a[0] - b[0]
+    dg = a[1] - b[1]
+    db = a[2] - b[2]
+    da = a[3] - b[3]
+    return dr * dr + dg * dg + db * db + da * da
+
+
+def map_unpopular_to_nearest_popular(
+    unpopular_colors: list[RgbaColor],
+    popular_colors: list[RgbaColor],
+) -> dict[RgbaColor, RgbaColor]:
+    if not popular_colors:
+        return {}
+
+    mapping: dict[RgbaColor, RgbaColor] = {}
+    for unpopular in unpopular_colors:
+        nearest = min(
+            popular_colors,
+            key=lambda popular: color_distance_sq(unpopular, popular),
+        )
+        mapping[unpopular] = nearest
+    return mapping
+
+
+def pair_candidate_path(png_path: Path) -> Path | None:
+    stem = png_path.stem
+    if stem.endswith("back"):
+        return None
+    return png_path.with_name(f"{stem}back.png")
+
+
+def analyze_paired_source_sprites(
+    front_path: Path,
+    front_pixels: list[RgbaColor],
+    front_limit: int,
+    folder: Path,
+) -> None:
+    back_path = pair_candidate_path(front_path)
+    if back_path is None or not back_path.exists():
+        return
+
+    try:
+        _back_width, _back_height, back_pixels = parse_png_rgba_pixels(back_path)
+    except Exception as exc:
+        print(f"  Paired source check skipped for {back_path.name}: ERROR - {exc}")
+        return
+
+    front_visible = {pixel for pixel in front_pixels if pixel[3] > 0}
+    back_visible = {pixel for pixel in back_pixels if pixel[3] > 0}
+    shared_visible = front_visible | back_visible
+
+    print(f"  Paired source check: {front_path.name} + {back_path.name}")
+    print(
+        f"    front_visible={len(front_visible):2d}, back_visible={len(back_visible):2d}, "
+        f"shared_visible={len(shared_visible):2d}"
+    )
+    print(
+        f"    same visible colors: {'yes' if front_visible == back_visible else 'no'}"
+    )
+
+    if len(shared_visible) <= front_limit:
+        print(
+            f"    shared normal.pal fits the limit: yes (<= {front_limit})"
+        )
+        print(f"    promote with shared palette: {folder / 'normal.pal'}")
+        print(f"    target files: anim_front.png, back.png")
+    else:
+        print(
+            f"    shared normal.pal fits the limit: no (needs {len(shared_visible)} colors)"
+        )
+        print(
+            "    note: a single normal.pal must cover both front and back sprites, "
+            "so the union of their visible colors has to fit the limit"
+        )
 
 
 def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> int:
@@ -346,20 +430,31 @@ def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> 
             for color, count in sorted_counts:
                 print(f"    {count:4d} px  {color}")
 
-            colors_to_mark = {color for color, _count in sorted_counts[limit:]}
+            popular_colors = [color for color, _count in sorted_counts[:limit]]
+            unpopular_list = [color for color, _count in sorted_counts[limit:]]
+            unpopular_colors = set(unpopular_list)
+            unpopular_to_popular_map = map_unpopular_to_nearest_popular(
+                unpopular_list,
+                popular_colors,
+            )
             testing_ground_path = create_testing_ground_image(
                 png_path,
                 width,
                 height,
                 pixels,
-                colors_to_mark,
+                unpopular_colors,
+                unpopular_to_popular_map,
             )
             if any(color[:3] == MAGENTA for color in visible_colors):
                 print(f"  Warning: {png_path.name} already uses magenta {MAGENTA}.")
             print(
                 f"  Testing ground: {testing_ground_path.name} "
-                f"(right half marks {len(colors_to_mark)} least-used over-budget colors in {MAGENTA})"
+                f"(left marks {len(unpopular_colors)} over-budget colors in {MAGENTA}; "
+                "right remaps them to nearest popular colors)"
             )
+
+        if not png_path.stem.endswith("back"):
+            analyze_paired_source_sprites(png_path, pixels, limit, folder)
 
     print(f"\nVisible-color limit: <= {limit}")
     if over_limit:
