@@ -195,7 +195,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .bodyColor = BODY_COLOR_BLACK,
         .speciesName = _("Yuria"),
         .cryId = CRY_NONE,
-        .natDexNum = NATIONAL_DEX_NONE,
+        .natDexNum = NATIONAL_DEX_YURIA,
         .categoryName = _("Unknown"),
         .height = 15,
         .weight = 410,
@@ -214,7 +214,6 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .frontAnimFrames = ANIM_FRAMES(
             ANIMCMD_FRAME(0,1),
         ),
-        //.frontAnimId = ANIM_V_SQUISH_AND_BOUNCE,
         .backPic = gMonBackPic_Yuria,
         .backPicSize = MON_COORDS_SIZE(64, 64),
         .backPicYOffset = 0,
@@ -223,15 +222,10 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .shinyPalette = gMonShinyPalette_Yuria,
         .iconSprite = gMonIcon_Yuria,
         .iconPalIndex = 0,
-        SHADOW(-2, 8, SHADOW_SIZE_S)
+        SHADOW(-2, 16, SHADOW_SIZE_S)
         FOOTPRINT(Yuria)
         .levelUpLearnset = sYuriaLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
-        .evolutions = EVOLUTION({EVO_LEVEL, 100, SPECIES_NONE},
-                                {EVO_ITEM, ITEM_MOOMOO_MILK, SPECIES_NONE}),
-        //.formSpeciesIdTable = sNoneFormSpeciesIdTable,
-        //.formChangeTable = sNoneFormChangeTable,
-        //.perfectIVCount = NUM_STATS,
     },
 
     /* You may add any custom species below this point based on the following structure: */

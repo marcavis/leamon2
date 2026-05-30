@@ -18,7 +18,8 @@ What this script edits
 The script refuses to run (with clear error messages) unless:
   • The graphics folder graphics/pokemon/<name>/ exists and contains all required files.
   • All required definition fields are present in the .txt file.
-  • The species has not already been added (duplicate guard).
+    • In add mode (default), the species has not already been added.
+    • In update mode (--update), the species already exists.
 """
 
 import sys
@@ -150,14 +151,10 @@ def check_required_fields(data: dict) -> bool:
     return ok
 
 
-def check_not_duplicate(upper: str) -> bool:
-    """Make sure SPECIES_<upper> isn't already defined (prevents double-running)."""
+def species_exists(upper: str) -> bool:
+    """Return True if SPECIES_<upper> is already defined in species.h."""
     species_h = REPO_ROOT / "include" / "constants" / "species.h"
-    if f"SPECIES_{upper}" in species_h.read_text(encoding="utf-8"):
-        print(f"\n  ERROR: SPECIES_{upper} already exists in include/constants/species.h.\n"
-              f"         This species has probably already been added. Aborting.")
-        return False
-    return True
+    return f"SPECIES_{upper}" in species_h.read_text(encoding="utf-8")
 
 
 # ─── File helpers ─────────────────────────────────────────────────────────────
@@ -227,6 +224,151 @@ def parse_anim_frames(raw: str) -> list[tuple[int, int]]:
         raise ValueError(f"Could not parse FRONT_ANIM_FRAMES: {raw!r}\n"
                          "  Expected format: (0,1) or (0,10),(1,20)")
     return [(int(a), int(b)) for a, b in pairs]
+
+
+def build_learnset_block(title: str, learnset_lines: list[str]) -> str:
+    moves = []
+    for line in learnset_lines:
+        parts = line.split(",", 1)
+        if len(parts) != 2:
+            print(f"  WARNING: Skipping malformed learnset line: {line!r}")
+            continue
+        level, move = parts[0].strip(), parts[1].strip()
+        moves.append(f"    LEVEL_UP_MOVE({level:>2}, {move}),")
+
+    return (
+        f"static const struct LevelUpMove s{title}LevelUpLearnset[] = {{\n"
+        + "\n".join(moves)
+        + "\n    LEVEL_UP_END\n};"
+    )
+
+
+def build_species_entry(data: dict, upper: str, title: str) -> str:
+    # ── Build types ──────────────────────────────────────────────────────────
+    t1 = data["TYPE1"]
+    t2 = data.get("TYPE2", "")
+    if t2 and t2 not in ("", "TYPE_NONE"):
+        types_str = f"MON_TYPES({t1}, {t2})"
+    else:
+        types_str = f"MON_TYPES({t1})"
+
+    # ── EV yields ────────────────────────────────────────────────────────────
+    ev_fields = {
+        "HP":        int(data.get("EV_HP", 0)),
+        "Attack":    int(data.get("EV_ATTACK", 0)),
+        "Defense":   int(data.get("EV_DEFENSE", 0)),
+        "Speed":     int(data.get("EV_SPEED", 0)),
+        "SpAttack":  int(data.get("EV_SP_ATTACK", 0)),
+        "SpDefense": int(data.get("EV_SP_DEFENSE", 0)),
+    }
+    ev_lines = "".join(
+        f"        .evYield_{k} = {v},\n"
+        for k, v in ev_fields.items() if v > 0
+    )
+
+    # ── Items ────────────────────────────────────────────────────────────────
+    item_common = data.get("ITEM_COMMON", "ITEM_NONE")
+    item_rare = data.get("ITEM_RARE", "ITEM_NONE")
+    item_lines = ""
+    if item_common != "ITEM_NONE":
+        item_lines += f"        .itemCommon = {item_common},\n"
+    if item_rare != "ITEM_NONE":
+        item_lines += f"        .itemRare = {item_rare},\n"
+
+    # ── Egg groups ───────────────────────────────────────────────────────────
+    eg1 = data["EGG_GROUP1"]
+    eg2 = data.get("EGG_GROUP2", "").strip()
+    if eg2 and eg2 != eg1:
+        egg_str = f"MON_EGG_GROUPS({eg1}, {eg2})"
+    else:
+        egg_str = f"MON_EGG_GROUPS({eg1})"
+
+    # ── Sprite sizes ─────────────────────────────────────────────────────────
+    def parse_size(raw: str) -> str:
+        parts = [p.strip() for p in raw.split(",")]
+        return f"MON_COORDS_SIZE({parts[0]}, {parts[1]})"
+
+    front_size = parse_size(data["FRONT_PIC_SIZE"])
+    back_size  = parse_size(data["BACK_PIC_SIZE"])
+
+    # ── Animation frames ─────────────────────────────────────────────────────
+    anim_frames = parse_anim_frames(data["FRONT_ANIM_FRAMES"])
+    anim_frames_str = "        .frontAnimFrames = ANIM_FRAMES(\n"
+    for fi, dur in anim_frames:
+        anim_frames_str += f"            ANIMCMD_FRAME({fi},{dur}),\n"
+    anim_frames_str += "        ),"
+
+    # ── Optional animation fields ─────────────────────────────────────────────
+    front_anim_id = data.get("FRONT_ANIM_ID", "").strip()
+    anim_id_line = f"        .frontAnimId = {front_anim_id},\n" if front_anim_id else ""
+
+    front_anim_delay = int(data.get("FRONT_ANIM_DELAY", 0))
+    anim_delay_line = f"        .frontAnimDelay = {front_anim_delay},\n" if front_anim_delay else ""
+
+    enemy_elev = int(data.get("ENEMY_MON_ELEVATION", 0))
+    elev_line = f"        .enemyMonElevation = {enemy_elev},\n" if enemy_elev else ""
+
+    shadow_size = data.get("SHADOW_SIZE", "").strip()
+    shadow_x = int(data.get("SHADOW_X_OFFSET", 0))
+    shadow_y = int(data.get("SHADOW_Y_OFFSET", 0))
+    shadow_line = (
+        f"        SHADOW({shadow_x}, {shadow_y}, {shadow_size})\n"
+        if shadow_size
+        else ""
+    )
+
+    tab = "    "
+    return f"""
+{tab}[SPECIES_{upper}] =
+{tab}{{
+{tab}{tab}.baseHP        = {data['BASE_HP']},
+{tab}{tab}.baseAttack    = {data['BASE_ATTACK']},
+{tab}{tab}.baseDefense   = {data['BASE_DEFENSE']},
+{tab}{tab}.baseSpeed     = {data['BASE_SPEED']},
+{tab}{tab}.baseSpAttack  = {data['BASE_SP_ATTACK']},
+{tab}{tab}.baseSpDefense = {data['BASE_SP_DEFENSE']},
+{tab}{tab}.types = {types_str},
+{tab}{tab}.catchRate = {data['CATCH_RATE']},
+{tab}{tab}.expYield = {data['EXP_YIELD']},
+{ev_lines}{item_lines}{tab}{tab}.genderRatio = {data['GENDER_RATIO']},
+{tab}{tab}.eggCycles = {data['EGG_CYCLES']},
+{tab}{tab}.friendship = {data['FRIENDSHIP']},
+{tab}{tab}.growthRate = {data['GROWTH_RATE']},
+{tab}{tab}.eggGroups = {egg_str},
+{tab}{tab}.abilities = {{ {data['ABILITY1']}, {data['ABILITY2']}, {data['ABILITY_HIDDEN']} }},
+{tab}{tab}.bodyColor = {data['BODY_COLOR']},
+{tab}{tab}.speciesName = _("{data.get('DISPLAY_NAME', title)}"),
+{tab}{tab}.cryId = CRY_NONE,
+{tab}{tab}.natDexNum = NATIONAL_DEX_{upper},
+{tab}{tab}.categoryName = _("{data['CATEGORY_NAME']}"),
+{tab}{tab}.height = {data['HEIGHT']},
+{tab}{tab}.weight = {data['WEIGHT']},
+{tab}{tab}.description = COMPOUND_STRING(
+{tab}{tab}{tab}"{data['DESCRIPTION_1']}\\n"
+{tab}{tab}{tab}"{data['DESCRIPTION_2']}\\n"
+{tab}{tab}{tab}"{data['DESCRIPTION_3']}\\n"
+{tab}{tab}{tab}"{data['DESCRIPTION_4']}"),
+{tab}{tab}.pokemonScale = {data['POKEMON_SCALE']},
+{tab}{tab}.pokemonOffset = {data['POKEMON_OFFSET']},
+{tab}{tab}.trainerScale = {data['TRAINER_SCALE']},
+{tab}{tab}.trainerOffset = {data['TRAINER_OFFSET']},
+{tab}{tab}.frontPic = gMonFrontPic_{title},
+{tab}{tab}.frontPicSize = {front_size},
+{tab}{tab}.frontPicYOffset = {data['FRONT_PIC_Y_OFFSET']},
+{anim_frames_str}
+{anim_id_line}{anim_delay_line}{elev_line}{tab}{tab}.backPic = gMonBackPic_{title},
+{tab}{tab}.backPicSize = {back_size},
+{tab}{tab}.backPicYOffset = {data['BACK_PIC_Y_OFFSET']},
+{tab}{tab}.backAnimId = {data['BACK_ANIM_ID']},
+{tab}{tab}.palette = gMonPalette_{title},
+{tab}{tab}.shinyPalette = gMonShinyPalette_{title},
+{tab}{tab}.iconSprite = gMonIcon_{title},
+{tab}{tab}.iconPalIndex = {data['ICON_PAL_INDEX']},
+{shadow_line}{tab}{tab}FOOTPRINT({title})
+{tab}{tab}.levelUpLearnset = s{title}LevelUpLearnset,
+{tab}{tab}.teachableLearnset = sNoneTeachableLearnset,
+{tab}}},
+"""
 
 
 # ─── File edit functions ───────────────────────────────────────────────────────
@@ -349,21 +491,7 @@ def edit_learnsets_h(upper: str, title: str, learnset_lines: list[str], dry_run:
     path = REPO_ROOT / "src" / "data" / "pokemon" / "level_up_learnsets" / "leamon_learnsets.h"
     content = read_file(path)
 
-    # Build learnset C block
-    moves = []
-    for line in learnset_lines:
-        parts = line.split(",", 1)
-        if len(parts) != 2:
-            print(f"  WARNING: Skipping malformed learnset line: {line!r}")
-            continue
-        level, move = parts[0].strip(), parts[1].strip()
-        moves.append(f"    LEVEL_UP_MOVE({level:>2}, {move}),")
-
-    learnset_block = (
-        f"\nstatic const struct LevelUpMove s{title}LevelUpLearnset[] = {{\n"
-        + "\n".join(moves)
-        + "\n    LEVEL_UP_END\n};"
-    )
+    learnset_block = "\n" + build_learnset_block(title, learnset_lines)
 
     content = content.rstrip() + "\n" + learnset_block + "\n"
     write_file(path, content, dry_run)
@@ -375,133 +503,7 @@ def edit_species_info_h(data: dict, upper: str, title: str, dry_run: bool = Fals
     path = REPO_ROOT / "src" / "data" / "pokemon" / "species_info.h"
     content = read_file(path)
 
-    # ── Build types ──────────────────────────────────────────────────────────
-    t1 = data["TYPE1"]
-    t2 = data.get("TYPE2", "")
-    if t2 and t2 not in ("", "TYPE_NONE"):
-        types_str = f"MON_TYPES({t1}, {t2})"
-    else:
-        types_str = f"MON_TYPES({t1})"
-
-    # ── EV yields ────────────────────────────────────────────────────────────
-    ev_fields = {
-        "HP":        int(data.get("EV_HP", 0)),
-        "Attack":    int(data.get("EV_ATTACK", 0)),
-        "Defense":   int(data.get("EV_DEFENSE", 0)),
-        "Speed":     int(data.get("EV_SPEED", 0)),
-        "SpAttack":  int(data.get("EV_SP_ATTACK", 0)),
-        "SpDefense": int(data.get("EV_SP_DEFENSE", 0)),
-    }
-    ev_lines = "".join(
-        f"        .evYield_{k} = {v},\n"
-        for k, v in ev_fields.items() if v > 0
-    )
-
-    # ── Items ────────────────────────────────────────────────────────────────
-    item_common = data.get("ITEM_COMMON", "ITEM_NONE")
-    item_rare = data.get("ITEM_RARE", "ITEM_NONE")
-    item_lines = ""
-    if item_common != "ITEM_NONE":
-        item_lines += f"        .itemCommon = {item_common},\n"
-    if item_rare != "ITEM_NONE":
-        item_lines += f"        .itemRare = {item_rare},\n"
-
-    # ── Egg groups ───────────────────────────────────────────────────────────
-    eg1 = data["EGG_GROUP1"]
-    eg2 = data.get("EGG_GROUP2", "").strip()
-    if eg2 and eg2 != eg1:
-        egg_str = f"MON_EGG_GROUPS({eg1}, {eg2})"
-    else:
-        egg_str = f"MON_EGG_GROUPS({eg1})"
-
-    # ── Sprite sizes ─────────────────────────────────────────────────────────
-    def parse_size(raw: str) -> str:
-        parts = [p.strip() for p in raw.split(",")]
-        return f"MON_COORDS_SIZE({parts[0]}, {parts[1]})"
-
-    front_size = parse_size(data["FRONT_PIC_SIZE"])
-    back_size  = parse_size(data["BACK_PIC_SIZE"])
-
-    # ── Animation frames ─────────────────────────────────────────────────────
-    anim_frames = parse_anim_frames(data["FRONT_ANIM_FRAMES"])
-    anim_frames_str = "        .frontAnimFrames = ANIM_FRAMES(\n"
-    for fi, dur in anim_frames:
-        anim_frames_str += f"            ANIMCMD_FRAME({fi},{dur}),\n"
-    anim_frames_str += "        ),"
-
-    # ── Optional animation fields ─────────────────────────────────────────────
-    front_anim_id = data.get("FRONT_ANIM_ID", "").strip()
-    anim_id_line = f"        .frontAnimId = {front_anim_id},\n" if front_anim_id else ""
-
-    front_anim_delay = int(data.get("FRONT_ANIM_DELAY", 0))
-    anim_delay_line = f"        .frontAnimDelay = {front_anim_delay},\n" if front_anim_delay else ""
-
-    enemy_elev = int(data.get("ENEMY_MON_ELEVATION", 0))
-    elev_line = f"        .enemyMonElevation = {enemy_elev},\n" if enemy_elev else ""
-
-    shadow_size = data.get("SHADOW_SIZE", "").strip()
-    shadow_x = int(data.get("SHADOW_X_OFFSET", 0))
-    shadow_y = int(data.get("SHADOW_Y_OFFSET", 0))
-    shadow_line = (
-        f"{tab}{tab}SHADOW({shadow_x}, {shadow_y}, {shadow_size})\n"
-        if shadow_size
-        else ""
-    )
-
-    # ── Build the full entry ──────────────────────────────────────────────────
-    tab = "    "
-    entry = f"""
-{tab}[SPECIES_{upper}] =
-{tab}{{
-{tab}{tab}.baseHP        = {data['BASE_HP']},
-{tab}{tab}.baseAttack    = {data['BASE_ATTACK']},
-{tab}{tab}.baseDefense   = {data['BASE_DEFENSE']},
-{tab}{tab}.baseSpeed     = {data['BASE_SPEED']},
-{tab}{tab}.baseSpAttack  = {data['BASE_SP_ATTACK']},
-{tab}{tab}.baseSpDefense = {data['BASE_SP_DEFENSE']},
-{tab}{tab}.types = {types_str},
-{tab}{tab}.catchRate = {data['CATCH_RATE']},
-{tab}{tab}.expYield = {data['EXP_YIELD']},
-{ev_lines}{item_lines}{tab}{tab}.genderRatio = {data['GENDER_RATIO']},
-{tab}{tab}.eggCycles = {data['EGG_CYCLES']},
-{tab}{tab}.friendship = {data['FRIENDSHIP']},
-{tab}{tab}.growthRate = {data['GROWTH_RATE']},
-{tab}{tab}.eggGroups = {egg_str},
-{tab}{tab}.abilities = {{ {data['ABILITY1']}, {data['ABILITY2']}, {data['ABILITY_HIDDEN']} }},
-{tab}{tab}.bodyColor = {data['BODY_COLOR']},
-{tab}{tab}.speciesName = _("{data.get('DISPLAY_NAME', title)}"),
-{tab}{tab}.cryId = CRY_NONE,
-{tab}{tab}.natDexNum = NATIONAL_DEX_{upper},
-{tab}{tab}.categoryName = _("{data['CATEGORY_NAME']}"),
-{tab}{tab}.height = {data['HEIGHT']},
-{tab}{tab}.weight = {data['WEIGHT']},
-{tab}{tab}.description = COMPOUND_STRING(
-{tab}{tab}{tab}"{data['DESCRIPTION_1']}\\n"
-{tab}{tab}{tab}"{data['DESCRIPTION_2']}\\n"
-{tab}{tab}{tab}"{data['DESCRIPTION_3']}\\n"
-{tab}{tab}{tab}"{data['DESCRIPTION_4']}"),
-{tab}{tab}.pokemonScale = {data['POKEMON_SCALE']},
-{tab}{tab}.pokemonOffset = {data['POKEMON_OFFSET']},
-{tab}{tab}.trainerScale = {data['TRAINER_SCALE']},
-{tab}{tab}.trainerOffset = {data['TRAINER_OFFSET']},
-{tab}{tab}.frontPic = gMonFrontPic_{title},
-{tab}{tab}.frontPicSize = {front_size},
-{tab}{tab}.frontPicYOffset = {data['FRONT_PIC_Y_OFFSET']},
-{anim_frames_str}
-{anim_id_line}{anim_delay_line}{elev_line}{tab}{tab}.backPic = gMonBackPic_{title},
-{tab}{tab}.backPicSize = {back_size},
-{tab}{tab}.backPicYOffset = {data['BACK_PIC_Y_OFFSET']},
-{tab}{tab}.backAnimId = {data['BACK_ANIM_ID']},
-{tab}{tab}.palette = gMonPalette_{title},
-{tab}{tab}.shinyPalette = gMonShinyPalette_{title},
-{tab}{tab}.iconSprite = gMonIcon_{title},
-{tab}{tab}.iconPalIndex = {data['ICON_PAL_INDEX']},
-{shadow_line}
-{tab}{tab}FOOTPRINT({title})
-{tab}{tab}.levelUpLearnset = s{title}LevelUpLearnset,
-{tab}{tab}.teachableLearnset = sNoneTeachableLearnset,
-{tab}}},
-"""
+    entry = build_species_entry(data, upper, title)
 
     anchor = "    /* You may add any custom species below this point"
     if anchor not in content:
@@ -511,6 +513,69 @@ def edit_species_info_h(data: dict, upper: str, title: str, dry_run: bool = Fals
     write_file(path, content, dry_run)
     status = "[DRY-RUN]" if dry_run else "[OK]"
     print(f"  {status} src/data/pokemon/species_info.h       [SPECIES_{upper}]")
+
+
+def edit_learnsets_h_update(title: str, learnset_lines: list[str], dry_run: bool = False) -> None:
+    path = REPO_ROOT / "src" / "data" / "pokemon" / "level_up_learnsets" / "leamon_learnsets.h"
+    content = read_file(path)
+
+    new_block = build_learnset_block(title, learnset_lines)
+    pattern = re.compile(
+        rf"static const struct LevelUpMove s{re.escape(title)}LevelUpLearnset\[\] = \{{[\s\S]*?\n\}};",
+        re.MULTILINE,
+    )
+    if not pattern.search(content):
+        raise ValueError(f"Could not find existing learnset block for s{title}LevelUpLearnset")
+
+    content = pattern.sub(new_block, content, count=1)
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} leamon_learnsets.h                    s{title}LevelUpLearnset (updated)")
+
+
+def edit_species_info_h_update(data: dict, upper: str, title: str, dry_run: bool = False) -> None:
+    path = REPO_ROOT / "src" / "data" / "pokemon" / "species_info.h"
+    content = read_file(path)
+
+    marker = f"[SPECIES_{upper}]"
+    marker_idx = content.find(marker)
+    if marker_idx == -1:
+        raise ValueError(f"Could not find existing species entry for {marker}")
+
+    block_start = content.rfind("\n", 0, marker_idx) + 1
+    open_idx = content.find("{", marker_idx)
+    if open_idx == -1:
+        raise ValueError(f"Malformed species entry for {marker}: missing '{{'")
+
+    depth = 0
+    close_idx = -1
+    for i in range(open_idx, len(content)):
+        ch = content[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                close_idx = i
+                break
+
+    if close_idx == -1:
+        raise ValueError(f"Malformed species entry for {marker}: unmatched braces")
+
+    block_end = close_idx + 1
+    while block_end < len(content) and content[block_end] in " \t":
+        block_end += 1
+    if block_end < len(content) and content[block_end] == ",":
+        block_end += 1
+    if block_end < len(content) and content[block_end] == "\n":
+        block_end += 1
+
+    new_entry = build_species_entry(data, upper, title).lstrip("\n")
+    content = content[:block_start] + new_entry + content[block_end:]
+
+    write_file(path, content, dry_run)
+    status = "[DRY-RUN]" if dry_run else "[OK]"
+    print(f"  {status} src/data/pokemon/species_info.h       [SPECIES_{upper}] (updated)")
 
 
 def edit_pokedex_orders_h(data: dict, upper: str, dry_run: bool = False) -> None:
@@ -571,6 +636,11 @@ def main() -> None:
         action="store_true",
         help="Validate and preview all edits without writing files",
     )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Update an existing species from definition file (species_info + learnset) instead of adding a new one",
+    )
     args = parser.parse_args()
 
     def_path = Path(args.definition_file).resolve()
@@ -598,25 +668,41 @@ def main() -> None:
         sys.exit(1)
     print("  All required fields present.")
 
-    # ── Step 3: Duplicate guard ────────────────────────────────────────────────
-    if not check_not_duplicate(upper):
+    # ── Step 3: Existence / duplicate guard ───────────────────────────────────
+    exists = species_exists(upper)
+    if args.update and not exists:
+        print(f"\n  ERROR: SPECIES_{upper} does not exist in include/constants/species.h.")
+        print("         Use add mode (without --update) to add a brand new species first.")
+        sys.exit(1)
+    if not args.update and exists:
+        print(f"\n  ERROR: SPECIES_{upper} already exists in include/constants/species.h.")
+        print("         This species has probably already been added.")
+        print("         If you want to apply new data from the definition file, run with --update.")
         sys.exit(1)
 
     # ── Step 4: Apply all file edits ───────────────────────────────────────────
     print("\nApplying edits ..." if not args.dry_run else "\nSimulating edits (--dry-run) ...")
     errors = []
 
-    for fn, args, desc in [
-        (edit_species_h,       (name, upper, args.dry_run),                      "include/constants/species.h"),
-        (edit_pokedex_h,       (upper, args.dry_run),                            "include/constants/pokedex.h"),
-        (edit_graphics_h,      (name, title, args.dry_run),                      "src/data/graphics/pokemon.h"),
-        (edit_learnsets_h,     (upper, title, data["_LEARNSET_LINES"], args.dry_run), "leamon_learnsets.h"),
-        (edit_species_info_h,  (data, upper, title, args.dry_run),               "src/data/pokemon/species_info.h"),
-        (edit_pokedex_orders_h,(data, upper, args.dry_run),                      "src/data/pokemon/pokedex_orders.h"),
-        (edit_pokemon_c,       (upper, args.dry_run),                            "src/pokemon.c"),
-    ]:
+    if args.update:
+        tasks = [
+            (edit_learnsets_h_update, (title, data["_LEARNSET_LINES"], args.dry_run), "leamon_learnsets.h"),
+            (edit_species_info_h_update, (data, upper, title, args.dry_run), "src/data/pokemon/species_info.h"),
+        ]
+    else:
+        tasks = [
+            (edit_species_h,       (name, upper, args.dry_run),                      "include/constants/species.h"),
+            (edit_pokedex_h,       (upper, args.dry_run),                            "include/constants/pokedex.h"),
+            (edit_graphics_h,      (name, title, args.dry_run),                      "src/data/graphics/pokemon.h"),
+            (edit_learnsets_h,     (upper, title, data["_LEARNSET_LINES"], args.dry_run), "leamon_learnsets.h"),
+            (edit_species_info_h,  (data, upper, title, args.dry_run),               "src/data/pokemon/species_info.h"),
+            (edit_pokedex_orders_h,(data, upper, args.dry_run),                      "src/data/pokemon/pokedex_orders.h"),
+            (edit_pokemon_c,       (upper, args.dry_run),                            "src/pokemon.c"),
+        ]
+
+    for fn, fn_args, desc in tasks:
         try:
-            fn(*args)
+            fn(*fn_args)
         except Exception as e:
             print(f"  [FAIL] {desc}: {e}")
             errors.append(desc)
@@ -630,8 +716,13 @@ def main() -> None:
         sys.exit(1)
     else:
         if args.dry_run:
-            print(f"Dry run complete. SPECIES_{upper} passed validation and all edits are ready.")
+            action = "update" if args.update else "add"
+            print(f"Dry run complete. SPECIES_{upper} passed validation and {action} edits are ready.")
             print("No files were modified.")
+            return
+
+        if args.update:
+            print(f"Done! SPECIES_{upper} has been updated from the definition file.")
             return
 
         print(f"Done! SPECIES_{upper} has been added to all source files.")
