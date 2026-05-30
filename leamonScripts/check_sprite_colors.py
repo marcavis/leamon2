@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 import math
-import shutil
 import struct
 import sys
 from typing import TypeAlias
@@ -461,6 +460,24 @@ def should_offer_promote(front_path: Path) -> bool:
     return front_path.stem not in excluded_stems and not front_path.stem.startswith("testing-ground")
 
 
+def fill_transparent_with_bg(pixels: list[RgbaColor], bg_rgb: tuple[int, int, int]) -> list[RgbaColor]:
+    br, bg, bb = bg_rgb
+    return [
+        (br, bg, bb, 255) if pixel[3] == 0 else pixel
+        for pixel in pixels
+    ]
+
+
+def make_two_frame_vertical_stack(
+    width: int,
+    height: int,
+    pixels: list[RgbaColor],
+) -> tuple[int, int, list[RgbaColor]]:
+    stacked_height = height * 2
+    stacked_pixels: list[RgbaColor] = pixels + pixels
+    return width, stacked_height, stacked_pixels
+
+
 def color_distance_sq(a: RgbaColor, b: RgbaColor) -> int:
     dr = a[0] - b[0]
     dg = a[1] - b[1]
@@ -588,8 +605,20 @@ def analyze_paired_source_sprites(
             if prompt_yes_no(
                 "    Promote this pair (overwrite anim_front.png/back.png and regenerate normal.pal)?"
             ):
-                shutil.copyfile(front_path, front_target)
-                shutil.copyfile(back_path, back_target)
+                front_src_w, front_src_h, front_src_pixels = parse_png_rgba_pixels(front_path)
+                back_src_w, back_src_h, back_src_pixels = parse_png_rgba_pixels(back_path)
+
+                front_filled_pixels = fill_transparent_with_bg(front_src_pixels, DEFAULT_BG_RGB)
+                back_filled_pixels = fill_transparent_with_bg(back_src_pixels, DEFAULT_BG_RGB)
+
+                front_out_w, front_out_h, front_out_pixels = make_two_frame_vertical_stack(
+                    front_src_w,
+                    front_src_h,
+                    front_filled_pixels,
+                )
+
+                write_rgba_png(front_target, front_out_w, front_out_h, front_out_pixels)
+                write_rgba_png(back_target, back_src_w, back_src_h, back_filled_pixels)
                 palette_colors = build_shared_palette_colors(
                     [color for color, _count in front_sorted],
                     [color for color, _count in back_sorted],
@@ -598,7 +627,8 @@ def analyze_paired_source_sprites(
                 )
                 write_jasc_palette(normal_pal_target, palette_colors)
                 print(
-                    f"    promoted: {front_target.name}, {back_target.name}, {normal_pal_target.name}"
+                    f"    promoted: {front_target.name} ({front_out_w}x{front_out_h}), "
+                    f"{back_target.name} ({back_src_w}x{back_src_h}), {normal_pal_target.name}"
                 )
             else:
                 print("    promote skipped")
