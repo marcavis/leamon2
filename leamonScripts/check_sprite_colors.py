@@ -277,34 +277,137 @@ def parse_png_rgba_pixels(png_path: Path) -> tuple[int, int, list[RgbaColor]]:
     return width, height, pixels
 
 
-def create_testing_ground_image(
+def sorted_visible_colors_by_usage(pixels: list[RgbaColor]) -> list[RgbaColor]:
+    counts = Counter(pixel for pixel in pixels if pixel[3] > 0)
+    sorted_counts = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return [color for color, _count in sorted_counts]
+
+
+def apply_magenta_marks(
+    pixels: list[RgbaColor],
+    colors_to_mark: set[RgbaColor],
+) -> list[RgbaColor]:
+    return [
+        (MAGENTA[0], MAGENTA[1], MAGENTA[2], pixel[3]) if pixel in colors_to_mark else pixel
+        for pixel in pixels
+    ]
+
+
+def build_palette_strip_pixels(
+    colors: list[RgbaColor],
+    target_height: int,
+    swatch_size: int = 4,
+) -> tuple[int, int, list[RgbaColor]]:
+    cols = 1 if len(colors) <= 16 else 2
+    rows = max(1, math.ceil(len(colors) / cols))
+    strip_width = cols * swatch_size
+    strip_height = max(target_height, rows * swatch_size)
+    strip_pixels: list[RgbaColor] = [(0, 0, 0, 0)] * (strip_width * strip_height)
+
+    for index, color in enumerate(colors):
+        col = index // rows
+        row = index % rows
+        x0 = col * swatch_size
+        y0 = row * swatch_size
+        for dy in range(swatch_size):
+            for dx in range(swatch_size):
+                x = x0 + dx
+                y = y0 + dy
+                strip_pixels[y * strip_width + x] = color
+
+    return strip_width, strip_height, strip_pixels
+
+
+def build_triptych_with_palettes(
+    width: int,
+    height: int,
+    left_pixels: list[RgbaColor],
+    middle_pixels: list[RgbaColor],
+    right_pixels: list[RgbaColor],
+) -> tuple[int, int, list[RgbaColor]]:
+    left_palette = sorted_visible_colors_by_usage(left_pixels)
+    middle_palette = sorted_visible_colors_by_usage(middle_pixels)
+    right_palette = sorted_visible_colors_by_usage(right_pixels)
+
+    left_pw, left_ph, left_pp = build_palette_strip_pixels(left_palette, height)
+    middle_pw, middle_ph, middle_pp = build_palette_strip_pixels(middle_palette, height)
+    right_pw, right_ph, right_pp = build_palette_strip_pixels(right_palette, height)
+
+    canvas_height = max(height, left_ph, middle_ph, right_ph)
+    canvas_width = (width + left_pw) + (width + middle_pw) + (width + right_pw)
+    canvas_pixels: list[RgbaColor] = [(0, 0, 0, 0)] * (canvas_width * canvas_height)
+
+    def blit(src_width: int, src_height: int, src_pixels: list[RgbaColor], dst_x: int, dst_y: int) -> None:
+        for y in range(src_height):
+            src_start = y * src_width
+            dst_start = (dst_y + y) * canvas_width + dst_x
+            canvas_pixels[dst_start : dst_start + src_width] = src_pixels[src_start : src_start + src_width]
+
+    section0_x = 0
+    section1_x = section0_x + width + left_pw
+    section2_x = section1_x + width + middle_pw
+
+    blit(width, height, left_pixels, section0_x, 0)
+    blit(left_pw, left_ph, left_pp, section0_x + width, 0)
+    blit(width, height, middle_pixels, section1_x, 0)
+    blit(middle_pw, middle_ph, middle_pp, section1_x + width, 0)
+    blit(width, height, right_pixels, section2_x, 0)
+    blit(right_pw, right_ph, right_pp, section2_x + width, 0)
+
+    return canvas_width, canvas_height, canvas_pixels
+
+
+def write_testing_ground_variants(
     png_path: Path,
     width: int,
     height: int,
-    pixels: list[RgbaColor],
-    unpopular_colors: set[RgbaColor],
-    unpopular_to_popular_map: dict[RgbaColor, RgbaColor],
-) -> Path:
-    magenta_pixels = [
-        (MAGENTA[0], MAGENTA[1], MAGENTA[2], pixel[3]) if pixel in unpopular_colors else pixel
-        for pixel in pixels
-    ]
-    remapped_pixels = [unpopular_to_popular_map.get(pixel, pixel) for pixel in pixels]
+    original_pixels: list[RgbaColor],
+    colors_to_mark: set[RgbaColor],
+    remap_map: dict[RgbaColor, RgbaColor],
+) -> tuple[Path, int, int, list[RgbaColor]]:
+    left_pixels = apply_magenta_marks(original_pixels, colors_to_mark)
+    middle_pixels = original_pixels
+    right_pixels = [remap_map.get(pixel, pixel) for pixel in original_pixels]
 
-    combined_pixels: list[RgbaColor] = []
-    for row_index in range(height):
-        start = row_index * width
-        end = start + width
-        # Left: unpopular colors highlighted as magenta.
-        combined_pixels.extend(magenta_pixels[start:end])
-        # Middle: original sprite.
-        combined_pixels.extend(pixels[start:end])
-        # Right: unpopular colors remapped to nearest popular colors.
-        combined_pixels.extend(remapped_pixels[start:end])
+    canvas_width, canvas_height, canvas_pixels = build_triptych_with_palettes(
+        width,
+        height,
+        left_pixels,
+        middle_pixels,
+        right_pixels,
+    )
 
     output_path = png_path.with_name(f"testing-ground-{png_path.stem}.png")
-    write_rgba_png(output_path, width * 3, height, combined_pixels)
-    return output_path
+    write_rgba_png(output_path, canvas_width, canvas_height, canvas_pixels)
+    return output_path, canvas_width, canvas_height, canvas_pixels
+
+
+def write_testing_grounds_combined(
+    folder: Path,
+    front_stem: str,
+    top_width: int,
+    top_height: int,
+    top_pixels: list[RgbaColor],
+    bottom_width: int,
+    bottom_height: int,
+    bottom_pixels: list[RgbaColor],
+) -> Path:
+    combined_width = max(top_width, bottom_width)
+    combined_height = top_height + bottom_height
+    combined_pixels: list[RgbaColor] = [(0, 0, 0, 0)] * (combined_width * combined_height)
+
+    def blit(src_width: int, src_height: int, src_pixels: list[RgbaColor], dst_x: int, dst_y: int) -> None:
+        for y in range(src_height):
+            src_start = y * src_width
+            dst_start = (dst_y + y) * combined_width + dst_x
+            combined_pixels[dst_start : dst_start + src_width] = src_pixels[src_start : src_start + src_width]
+
+    blit(top_width, top_height, top_pixels, 0, 0)
+    blit(bottom_width, bottom_height, bottom_pixels, 0, top_height)
+
+    combined_path = folder / f"testing-grounds-combined-{front_stem}.png"
+    write_rgba_png(combined_path, combined_width, combined_height, combined_pixels)
+    return combined_path
 
 
 def color_distance_sq(a: RgbaColor, b: RgbaColor) -> int:
@@ -341,6 +444,8 @@ def pair_candidate_path(png_path: Path) -> Path | None:
 
 def analyze_paired_source_sprites(
     front_path: Path,
+    front_width: int,
+    front_height: int,
     front_pixels: list[RgbaColor],
     front_limit: int,
     folder: Path,
@@ -350,7 +455,7 @@ def analyze_paired_source_sprites(
         return
 
     try:
-        _back_width, _back_height, back_pixels = parse_png_rgba_pixels(back_path)
+        back_width, back_height, back_pixels = parse_png_rgba_pixels(back_path)
     except Exception as exc:
         print(f"  Paired source check skipped for {back_path.name}: ERROR - {exc}")
         return
@@ -358,14 +463,59 @@ def analyze_paired_source_sprites(
     front_visible = {pixel for pixel in front_pixels if pixel[3] > 0}
     back_visible = {pixel for pixel in back_pixels if pixel[3] > 0}
     shared_visible = front_visible | back_visible
+    matching_visible = front_visible & back_visible
+    front_only_visible = front_visible - back_visible
+    back_only_visible = back_visible - front_visible
 
     print(f"  Paired source check: {front_path.name} + {back_path.name}")
     print(
         f"    front_visible={len(front_visible):2d}, back_visible={len(back_visible):2d}, "
-        f"shared_visible={len(shared_visible):2d}"
+        f"matching={len(matching_visible):2d}, shared_visible={len(shared_visible):2d}"
+    )
+    print(
+        f"    front-only colors={len(front_only_visible):2d}, back-only colors={len(back_only_visible):2d}"
     )
     print(
         f"    same visible colors: {'yes' if front_visible == back_visible else 'no'}"
+    )
+    print("    front-first plan: finalize the front palette, then fit the back sprite to it")
+
+    front_visible_counts = Counter(pixel for pixel in front_pixels if pixel[3] > 0)
+    front_sorted = sorted(front_visible_counts.items(), key=lambda item: (-item[1], item[0]))
+    front_popular = [color for color, _count in front_sorted[:front_limit]]
+    front_unpopular = [color for color, _count in front_sorted[front_limit:]]
+    front_unpopular_set = set(front_unpopular)
+    front_remap = map_unpopular_to_nearest_popular(front_unpopular, front_popular)
+    front_testing_path, front_tg_w, front_tg_h, front_tg_pixels = write_testing_ground_variants(
+        front_path,
+        front_width,
+        front_height,
+        front_pixels,
+        front_unpopular_set,
+        front_remap,
+    )
+    print(
+        f"    front testing ground: {front_testing_path.name} "
+        "(magenta=front colors outside top 15; includes palette strips)"
+    )
+
+    back_visible_counts = Counter(pixel for pixel in back_pixels if pixel[3] > 0)
+    back_only_sorted = sorted(
+        back_only_visible,
+        key=lambda color: (-back_visible_counts[color], color),
+    )
+    back_remap_to_front = map_unpopular_to_nearest_popular(back_only_sorted, front_popular)
+    back_testing_path, back_tg_w, back_tg_h, back_tg_pixels = write_testing_ground_variants(
+        back_path,
+        back_width,
+        back_height,
+        back_pixels,
+        back_only_visible,
+        back_remap_to_front,
+    )
+    print(
+        f"    back testing ground: {back_testing_path.name} "
+        "(magenta=colors not found in front; includes palette strips)"
     )
 
     if len(shared_visible) <= front_limit:
@@ -382,11 +532,22 @@ def analyze_paired_source_sprites(
             "    note: a single normal.pal must cover both front and back sprites, "
             "so the union of their visible colors has to fit the limit"
         )
+        combined_path = write_testing_grounds_combined(
+            folder,
+            front_path.stem,
+            front_tg_w,
+            front_tg_h,
+            front_tg_pixels,
+            back_tg_w,
+            back_tg_h,
+            back_tg_pixels,
+        )
+        print(f"    combined testing grounds: {combined_path.name}")
 
 
 def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> int:
     png_files = sorted(folder.glob("*.png"))
-    png_files = [p for p in png_files if not p.name.startswith("testing-ground-")]
+    png_files = [p for p in png_files if not p.name.startswith("testing-ground")]
     if not check_gba:
         png_files = [p for p in png_files if not p.stem.endswith("_gba")]
 
@@ -437,24 +598,32 @@ def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool) -> 
                 unpopular_list,
                 popular_colors,
             )
-            testing_ground_path = create_testing_ground_image(
-                png_path,
-                width,
-                height,
-                pixels,
-                unpopular_colors,
-                unpopular_to_popular_map,
+            paired_candidate = pair_candidate_path(png_path)
+            paired_source_exists = (
+                not png_path.stem.endswith("back")
+                and paired_candidate is not None
+                and paired_candidate.exists()
             )
-            if any(color[:3] == MAGENTA for color in visible_colors):
-                print(f"  Warning: {png_path.name} already uses magenta {MAGENTA}.")
-            print(
-                f"  Testing ground: {testing_ground_path.name} "
-                f"(left marks {len(unpopular_colors)} over-budget colors in {MAGENTA}; "
-                "right remaps them to nearest popular colors)"
-            )
+            if not paired_source_exists:
+                testing_ground_path, _tg_w, _tg_h, _tg_pixels = write_testing_ground_variants(
+                    png_path,
+                    width,
+                    height,
+                    pixels,
+                    unpopular_colors,
+                    unpopular_to_popular_map,
+                )
+                if any(color[:3] == MAGENTA for color in visible_colors):
+                    print(f"  Warning: {png_path.name} already uses magenta {MAGENTA}.")
+                print(
+                    f"  Testing ground: {testing_ground_path.name} "
+                    f"(left marks {len(unpopular_colors)} over-budget colors in {MAGENTA}; "
+                    "each variant includes a vertical palette strip; "
+                    "right remaps them to nearest popular colors)"
+                )
 
         if not png_path.stem.endswith("back"):
-            analyze_paired_source_sprites(png_path, pixels, limit, folder)
+            analyze_paired_source_sprites(png_path, width, height, pixels, limit, folder)
 
     print(f"\nVisible-color limit: <= {limit}")
     if over_limit:
