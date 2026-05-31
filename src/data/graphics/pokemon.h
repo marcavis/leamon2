@@ -27526,3 +27526,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Lea[] = INCGFX_U16("graphics/pokemon/lea/shiny.pal", ".gbapal");
     const u8 gMonIcon_Lea[] = INCGFX_U8("graphics/pokemon/lea/icon.png", ".4bpp");
     const u8 gMonFootprint_Lea[] = INCGFX_U8("graphics/pokemon/lea/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Karin[] = INCGFX_U32("graphics/pokemon/karin/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Karin[] = INCGFX_U32("graphics/pokemon/karin/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Karin[] = INCGFX_U16("graphics/pokemon/karin/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Karin[] = INCGFX_U16("graphics/pokemon/karin/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Karin[] = INCGFX_U8("graphics/pokemon/karin/icon.png", ".4bpp");
+    const u8 gMonFootprint_Karin[] = INCGFX_U8("graphics/pokemon/karin/footprint.png", ".1bpp");

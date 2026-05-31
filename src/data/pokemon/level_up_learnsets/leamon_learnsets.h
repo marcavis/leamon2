@@ -54,3 +54,9 @@ static const struct LevelUpMove sLeaLevelUpLearnset[] = {
     LEVEL_UP_MOVE(53, MOVE_LAST_RESORT),
     LEVEL_UP_END
 };
+
+static const struct LevelUpMove sKarinLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_MOVE( 1, MOVE_TAIL_WHIP),
+    LEVEL_UP_END
+};

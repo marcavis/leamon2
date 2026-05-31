@@ -632,6 +632,7 @@ static const enum NationalDexOrder sHoennToNationalOrder[HOENN_DEX_COUNT - 1] =
     HOENN_TO_NATIONAL(YURIA),
     HOENN_TO_NATIONAL(ZEPHYRA),
     HOENN_TO_NATIONAL(LEA),
+    HOENN_TO_NATIONAL(KARIN),
 };
 
 const struct SpindaSpot gSpindaSpotGraphics[] =

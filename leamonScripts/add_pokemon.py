@@ -50,7 +50,7 @@ REQUIRED_FIELDS = [
     "ABILITY1", "ABILITY2", "ABILITY_HIDDEN",
     "BODY_COLOR",
     "CATEGORY_NAME", "HEIGHT", "WEIGHT",
-    "DESCRIPTION_1", "DESCRIPTION_2", "DESCRIPTION_3", "DESCRIPTION_4",
+    "DESCRIPTION_1",
     "POKEMON_SCALE", "POKEMON_OFFSET", "TRAINER_SCALE", "TRAINER_OFFSET",
     "FRONT_PIC_SIZE", "FRONT_PIC_Y_OFFSET",
     "BACK_PIC_SIZE", "BACK_PIC_Y_OFFSET",
@@ -144,6 +144,10 @@ def check_required_fields(data: dict) -> bool:
 
     if not data.get("_LEARNSET_LINES"):
         print("\n  ERROR: Definition file has no LEARNSET: section (or it is empty).")
+        ok = False
+
+    if not any(key.startswith("DESCRIPTION_") for key in data):
+        print("\n  ERROR: Definition file needs at least one DESCRIPTION_n field.")
         ok = False
 
     if not ok:
@@ -384,6 +388,19 @@ def build_species_entry(data: dict, upper: str, title: str) -> str:
     )
 
     tab = "    "
+    description_lines = []
+    for index in range(1, 5):
+        value = data.get(f"DESCRIPTION_{index}", "").strip()
+        if value:
+            description_lines.append(value)
+    if not description_lines:
+        raise ValueError("Could not find any DESCRIPTION_n fields in definition file")
+
+    description_str = "\n".join(
+        f'{tab}{tab}{tab}"{line}\\n"' if index < len(description_lines) - 1 else f'{tab}{tab}{tab}"{line}"'
+        for index, line in enumerate(description_lines)
+    )
+
     return f"""
 {tab}[SPECIES_{upper}] =
 {tab}{{
@@ -410,10 +427,7 @@ def build_species_entry(data: dict, upper: str, title: str) -> str:
 {tab}{tab}.height = {data['HEIGHT']},
 {tab}{tab}.weight = {data['WEIGHT']},
 {tab}{tab}.description = COMPOUND_STRING(
-{tab}{tab}{tab}"{data['DESCRIPTION_1']}\\n"
-{tab}{tab}{tab}"{data['DESCRIPTION_2']}\\n"
-{tab}{tab}{tab}"{data['DESCRIPTION_3']}\\n"
-{tab}{tab}{tab}"{data['DESCRIPTION_4']}"),
+{description_str}),
 {tab}{tab}.pokemonScale = {data['POKEMON_SCALE']},
 {tab}{tab}.pokemonOffset = {data['POKEMON_OFFSET']},
 {tab}{tab}.trainerScale = {data['TRAINER_SCALE']},

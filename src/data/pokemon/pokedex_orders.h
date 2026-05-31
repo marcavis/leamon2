@@ -1054,6 +1054,7 @@ const u16 gPokedexOrder_Alphabetical[] =
     NATIONAL_DEX_ZYGARDE,
     NATIONAL_DEX_ZEPHYRA,
     NATIONAL_DEX_LEA,
+    NATIONAL_DEX_KARIN,
 };
 
 const u16 gPokedexOrder_Weight[] =
@@ -2290,6 +2291,7 @@ const u16 gPokedexOrder_Weight[] =
     NATIONAL_DEX_SHIFTRY,
     // 132.3 lbs / 60.0 kg
     NATIONAL_DEX_NIDOQUEEN,
+ NATIONAL_DEX_KARIN,
     NATIONAL_DEX_LEA,
     NATIONAL_DEX_MAGNETON,
     NATIONAL_DEX_KINGLER,
@@ -4315,4 +4317,5 @@ const u16 gPokedexOrder_Height[] =
     NATIONAL_DEX_ETERNATUS,
     // 328'01" / 100m
     //NATIONAL_DEX_ETERNATUS_ETERNAMAX,
+ NATIONAL_DEX_KARIN,
 };

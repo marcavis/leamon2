@@ -1698,8 +1698,11 @@
 #define SPECIES_LEA                                       1575
 
 
+#define SPECIES_KARIN                                     1576
+
+
 //Leamon species end here
-#define SPECIES_EGG                                     (SPECIES_LEA + 1)
+#define SPECIES_EGG                                     (SPECIES_KARIN + 1)
 
 #define NUM_SPECIES SPECIES_EGG
 

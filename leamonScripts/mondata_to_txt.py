@@ -134,38 +134,8 @@ def format_move_name(value: str) -> str:
 
 
 def split_description(raw_parts: list[str]) -> list[str]:
-    template = [
-        "First line of the Pokédex entry.",
-        "Second line.",
-        "Third line.",
-        "Fourth line.",
-    ]
     parts = [normalize_text(part) for part in raw_parts if normalize_text(part)]
-    if not parts:
-        return template[:]
-
-    if len(parts) >= 4:
-        return parts[:4]
-
-    words = " ".join(parts).split()
-    if not words:
-        return template[:]
-
-    if len(words) < 4:
-        lines = words[:]
-        while len(lines) < 4:
-            lines.append(lines[-1] if lines else template[len(lines)])
-        return lines[:4]
-
-    base, extra = divmod(len(words), 4)
-    sizes = [base + (1 if index < extra else 0) for index in range(4)]
-    lines: list[str] = []
-    cursor = 0
-    for size in sizes:
-        chunk = words[cursor:cursor + size]
-        cursor += size
-        lines.append(" ".join(chunk))
-    return lines
+    return parts[:4]
 
 
 def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> tuple[str, str]:
@@ -245,8 +215,8 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
     file_name = sanitize_identifier(species_name).lower()
 
     description_lines = split_description(pokedex[2:6])
-    if len(description_lines) != 4:
-        raise ValueError(f"Expected four description lines for {species_name!r}")
+    if not description_lines:
+        raise ValueError(f"No description text found for {species_name!r}")
 
     learnset_lines: list[str] = []
     for level, move in zip(learnset_levels[2:], learnset_moves[2:]):
