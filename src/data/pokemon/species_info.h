@@ -282,6 +282,60 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .levelUpLearnset = sZephyraLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
     },
+
+    [SPECIES_LEA] =
+    {
+        .baseHP        = 90,
+        .baseAttack    = 55,
+        .baseDefense   = 75,
+        .baseSpeed     = 60,
+        .baseSpAttack  = 50,
+        .baseSpDefense = 70,
+        .types = MON_TYPES(TYPE_NORMAL),
+        .catchRate = 140,
+        .expYield = 150,
+        .evYield_HP = 2,
+        .genderRatio = PERCENT_FEMALE(50),
+        .eggCycles = 20,
+        .friendship = STANDARD_FRIENDSHIP,
+        .growthRate = GROWTH_MEDIUM_FAST,
+        .eggGroups = MON_EGG_GROUPS(EGG_GROUP_HUMAN_LIKE),
+        .abilities = { ABILITY_NEST_DEFENDER, ABILITY_NONE, ABILITY_NONE },
+        .bodyColor = BODY_COLOR_BLACK,
+        .speciesName = _("Lea"),
+        .cryId = CRY_NONE,
+        .natDexNum = NATIONAL_DEX_LEA,
+        .categoryName = _("Matriarch"),
+        .height = 16,
+        .weight = 600,
+        .description = COMPOUND_STRING(
+            "A friendly matriarch.\n"
+            "ononono.\n"
+            "nonononon\n"
+            "onononon."),
+        .pokemonScale = 256,
+        .pokemonOffset = 0,
+        .trainerScale = 256,
+        .trainerOffset = 0,
+        .frontPic = gMonFrontPic_Lea,
+        .frontPicSize = MON_COORDS_SIZE(64, 64),
+        .frontPicYOffset = 0,
+        .frontAnimFrames = ANIM_FRAMES(
+            ANIMCMD_FRAME(0,1),
+        ),
+        .backPic = gMonBackPic_Lea,
+        .backPicSize = MON_COORDS_SIZE(64, 64),
+        .backPicYOffset = 0,
+        .backAnimId = BACK_ANIM_NONE,
+        .palette = gMonPalette_Lea,
+        .shinyPalette = gMonShinyPalette_Lea,
+        .iconSprite = gMonIcon_Lea,
+        .iconPalIndex = 0,
+        SHADOW(2, 16, SHADOW_SIZE_M)
+        FOOTPRINT(Lea)
+        .levelUpLearnset = sLeaLevelUpLearnset,
+        .teachableLearnset = sNoneTeachableLearnset,
+    },
     /* You may add any custom species below this point based on the following structure: */
 
     /*

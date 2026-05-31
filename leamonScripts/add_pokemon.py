@@ -152,9 +152,10 @@ def check_required_fields(data: dict) -> bool:
 
 
 def species_exists(upper: str) -> bool:
-    """Return True if SPECIES_<upper> is already defined in species.h."""
+    """Return True if a whole SPECIES_<upper> define already exists in species.h."""
     species_h = REPO_ROOT / "include" / "constants" / "species.h"
-    return f"SPECIES_{upper}" in species_h.read_text(encoding="utf-8")
+    content = species_h.read_text(encoding="utf-8")
+    return re.search(rf"^\s*#define\s+SPECIES_{re.escape(upper)}\b", content, re.MULTILINE) is not None
 
 
 # ─── File helpers ─────────────────────────────────────────────────────────────

@@ -1053,6 +1053,7 @@ const u16 gPokedexOrder_Alphabetical[] =
     NATIONAL_DEX_ZWEILOUS,
     NATIONAL_DEX_ZYGARDE,
     NATIONAL_DEX_ZEPHYRA,
+    NATIONAL_DEX_LEA,
 };
 
 const u16 gPokedexOrder_Weight[] =
@@ -2936,6 +2937,7 @@ const u16 gPokedexOrder_Weight[] =
     NATIONAL_DEX_COSMOEM,
     NATIONAL_DEX_CELESTEELA,
     NATIONAL_DEX_ZEPHYRA,
+    NATIONAL_DEX_LEA,
 };
 
 const u16 gPokedexOrder_Height[] =
@@ -4312,4 +4314,5 @@ const u16 gPokedexOrder_Height[] =
     // 328'01" / 100m
     //NATIONAL_DEX_ETERNATUS_ETERNAMAX,
     NATIONAL_DEX_ZEPHYRA,
+    NATIONAL_DEX_LEA,
 };

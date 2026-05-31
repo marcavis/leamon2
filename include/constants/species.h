@@ -1695,8 +1695,11 @@
 #define SPECIES_ZEPHYRA                                   1574
 
 
+#define SPECIES_LEA                                       1575
+
+
 //Leamon species end here
-#define SPECIES_EGG                                     (SPECIES_ZEPHYRA + 1)
+#define SPECIES_EGG                                     (SPECIES_LEA + 1)
 
 #define NUM_SPECIES SPECIES_EGG
 

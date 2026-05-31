@@ -27519,3 +27519,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Zephyra[] = INCGFX_U16("graphics/pokemon/zephyra/shiny.pal", ".gbapal");
     const u8 gMonIcon_Zephyra[] = INCGFX_U8("graphics/pokemon/zephyra/icon.png", ".4bpp");
     const u8 gMonFootprint_Zephyra[] = INCGFX_U8("graphics/pokemon/zephyra/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Lea[] = INCGFX_U32("graphics/pokemon/lea/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Lea[] = INCGFX_U32("graphics/pokemon/lea/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Lea[] = INCGFX_U16("graphics/pokemon/lea/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Lea[] = INCGFX_U16("graphics/pokemon/lea/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Lea[] = INCGFX_U8("graphics/pokemon/lea/icon.png", ".4bpp");
+    const u8 gMonFootprint_Lea[] = INCGFX_U8("graphics/pokemon/lea/footprint.png", ".1bpp");
