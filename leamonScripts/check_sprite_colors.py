@@ -563,7 +563,7 @@ def analyze_paired_source_sprites(
     front_pixels: list[RgbaColor],
     front_limit: int,
     folder: Path,
-    offer_promote: bool,
+    auto_promote: bool,
 ) -> None:
     back_path = pair_candidate_path(front_path)
     if back_path is None or not back_path.exists():
@@ -641,43 +641,40 @@ def analyze_paired_source_sprites(
         print(f"    promote with shared palette: {folder / 'normal.pal'}")
         print(f"    target files: anim_front.png, back.png")
 
-        if offer_promote and should_offer_promote(front_path):
+        if auto_promote and should_offer_promote(front_path):
             front_target = folder / "anim_front.png"
             back_target = folder / "back.png"
             normal_pal_target = folder / "normal.pal"
             print(
                 f"    palette slot 0 (background/transparent key): {DEFAULT_BG_RGB[0]} {DEFAULT_BG_RGB[1]} {DEFAULT_BG_RGB[2]}"
             )
-            if prompt_yes_no(
-                "    Promote this pair (overwrite anim_front.png/back.png and regenerate normal.pal)?"
-            ):
-                front_src_w, front_src_h, front_src_pixels = parse_png_rgba_pixels(front_path)
-                back_src_w, back_src_h, back_src_pixels = parse_png_rgba_pixels(back_path)
+            front_src_w, front_src_h, front_src_pixels = parse_png_rgba_pixels(front_path)
+            back_src_w, back_src_h, back_src_pixels = parse_png_rgba_pixels(back_path)
 
-                front_filled_pixels = fill_transparent_with_bg(front_src_pixels, DEFAULT_BG_RGB)
-                back_filled_pixels = fill_transparent_with_bg(back_src_pixels, DEFAULT_BG_RGB)
+            front_filled_pixels = fill_transparent_with_bg(front_src_pixels, DEFAULT_BG_RGB)
+            back_filled_pixels = fill_transparent_with_bg(back_src_pixels, DEFAULT_BG_RGB)
 
-                front_out_w, front_out_h, front_out_pixels = make_two_frame_vertical_stack(
-                    front_src_w,
-                    front_src_h,
-                    front_filled_pixels,
-                )
+            front_out_w, front_out_h, front_out_pixels = make_two_frame_vertical_stack(
+                front_src_w,
+                front_src_h,
+                front_filled_pixels,
+            )
 
-                palette_colors = build_shared_palette_colors(
-                    [color for color, _count in front_sorted],
-                    [color for color, _count in back_sorted],
-                    DEFAULT_BG_RGB,
-                    16,
-                )
-                write_indexed_png(front_target, front_out_w, front_out_h, front_out_pixels, palette_colors)
-                write_indexed_png(back_target, back_src_w, back_src_h, back_filled_pixels, palette_colors)
-                write_jasc_palette(normal_pal_target, palette_colors)
-                print(
-                    f"    promoted: {front_target.name} ({front_out_w}x{front_out_h}), "
-                    f"{back_target.name} ({back_src_w}x{back_src_h}), {normal_pal_target.name}"
-                )
-            else:
-                print("    promote skipped")
+            palette_colors = build_shared_palette_colors(
+                [color for color, _count in front_sorted],
+                [color for color, _count in back_sorted],
+                DEFAULT_BG_RGB,
+                16,
+            )
+            write_indexed_png(front_target, front_out_w, front_out_h, front_out_pixels, palette_colors)
+            write_indexed_png(back_target, back_src_w, back_src_h, back_filled_pixels, palette_colors)
+            write_jasc_palette(normal_pal_target, palette_colors)
+            print(
+                f"    promoted: {front_target.name} ({front_out_w}x{front_out_h}), "
+                f"{back_target.name} ({back_src_w}x{back_src_h}), {normal_pal_target.name}"
+            )
+        elif not auto_promote:
+            print("    promote skipped (--no-promote-offer)")
     else:
         print(
             f"    shared normal.pal fits the limit: no (needs {len(shared_visible)} colors)"
@@ -699,28 +696,44 @@ def analyze_paired_source_sprites(
         print(f"    combined testing grounds: {combined_path.name}")
 
 
-def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool, offer_promote: bool) -> int:
-    png_files = sorted(folder.glob("*.png"))
-    png_files = [p for p in png_files if not p.name.startswith("testing-ground")]
-    if not check_gba:
-        png_files = [p for p in png_files if not p.stem.endswith("_gba")]
+def analyze_pokemon_sprite_folder(
+    folder: Path,
+    base_name: str,
+    limit: int,
+    _check_gba: bool,
+    auto_promote: bool,
+) -> int:
+    front_path = folder / f"{base_name}.png"
+    back_path = folder / f"{base_name}back.png"
 
-    if not png_files:
-        print(f"No PNG files found in {folder}")
+    missing: list[Path] = []
+    if not front_path.exists():
+        missing.append(front_path)
+    if not back_path.exists():
+        missing.append(back_path)
+    if missing:
+        for missing_path in missing:
+            print(f"Missing required sprite file: {missing_path}")
         return 2
 
-    mode_text = "including _gba variants" if check_gba else "excluding _gba variants"
-    print(f"Analyzing {len(png_files)} sprite file(s) in: {folder} ({mode_text})\n")
+    print(f"Analyzing sprite pair in: {folder}")
+    print(f"  front source: {front_path.name}")
+    print(f"  back source:  {back_path.name}\n")
 
     over_limit = False
-    for png_path in png_files:
-        try:
-            width, height, pixels = parse_png_rgba_pixels(png_path)
-        except Exception as exc:
-            print(f"{png_path.name}: ERROR - {exc}")
-            over_limit = True
-            continue
+    try:
+        front_width, front_height, front_pixels = parse_png_rgba_pixels(front_path)
+    except Exception as exc:
+        print(f"{front_path.name}: ERROR - {exc}")
+        return 1
 
+    try:
+        _back_width, _back_height, back_pixels = parse_png_rgba_pixels(back_path)
+    except Exception as exc:
+        print(f"{back_path.name}: ERROR - {exc}")
+        return 1
+
+    for png_path, pixels in ((front_path, front_pixels), (back_path, back_pixels)):
         colors = set(pixels)
         visible_colors = {c for c in colors if c[3] > 0}
         transparent_colors = {c for c in colors if c[3] == 0}
@@ -735,56 +748,23 @@ def analyze_pokemon_sprite_folder(folder: Path, limit: int, check_gba: bool, off
             f"total_rgba={len(colors):2d}, transparent_variants={len(transparent_colors):2d} -> {status}"
         )
 
-        if len(visible_colors) > limit:
-            visible_counts = Counter(pixel for pixel in pixels if pixel[3] > 0)
-            sorted_counts = sorted(
-                visible_counts.items(),
-                key=lambda item: (-item[1], item[0]),
-            )
-            print("  Colors by usage (descending):")
-            for color, count in sorted_counts:
-                print(f"    {count:4d} px  {color}")
-
-            popular_colors = [color for color, _count in sorted_counts[:limit]]
-            unpopular_list = [color for color, _count in sorted_counts[limit:]]
-            unpopular_colors = set(unpopular_list)
-            unpopular_to_popular_map = map_unpopular_to_nearest_popular(
-                unpopular_list,
-                popular_colors,
-            )
-            paired_candidate = pair_candidate_path(png_path)
-            paired_source_exists = (
-                not png_path.stem.endswith("back")
-                and paired_candidate is not None
-                and paired_candidate.exists()
-            )
-            if not paired_source_exists:
-                testing_ground_path, _tg_w, _tg_h, _tg_pixels = write_testing_ground_variants(
-                    png_path,
-                    width,
-                    height,
-                    pixels,
-                    unpopular_colors,
-                    unpopular_to_popular_map,
-                )
-                if any(color[:3] == MAGENTA for color in visible_colors):
-                    print(f"  Warning: {png_path.name} already uses magenta {MAGENTA}.")
-                print(
-                    f"  Testing ground: {testing_ground_path.name} "
-                    f"(left marks {len(unpopular_colors)} over-budget colors in {MAGENTA}; "
-                    "each variant includes a vertical palette strip; "
-                    "right remaps them to nearest popular colors)"
-                )
-
-        if not png_path.stem.endswith("back"):
-            analyze_paired_source_sprites(png_path, width, height, pixels, limit, folder, offer_promote)
+    print("")
+    analyze_paired_source_sprites(
+        front_path,
+        front_width,
+        front_height,
+        front_pixels,
+        limit,
+        folder,
+        auto_promote,
+    )
 
     print(f"\nVisible-color limit: <= {limit}")
     if over_limit:
-        print("Result: One or more files exceed the limit (or failed to parse).")
+        print("Result: One or more files exceed the limit.")
         return 1
 
-    print("Result: All checked files are within the limit.")
+    print("Result: Requested pair is within the limit.")
     return 0
 
 
@@ -816,7 +796,7 @@ def main() -> int:
     parser.add_argument(
         "--no-promote-offer",
         action="store_true",
-        help="Do not prompt to promote <foo>.png + <foo>back.png into anim_front.png/back.png and regenerate normal.pal",
+        help="Do not promote <name>.png + <name>back.png into anim_front.png/back.png and normal.pal",
     )
     args = parser.parse_args()
 
@@ -839,7 +819,8 @@ def main() -> int:
         print(f"Not a folder: {folder}")
         return 2
 
-    return analyze_pokemon_sprite_folder(folder, args.limit, args.check_gba, not args.no_promote_offer)
+    target_name = args.pokemon if args.pokemon else folder.name
+    return analyze_pokemon_sprite_folder(folder, target_name, args.limit, args.check_gba, not args.no_promote_offer)
 
 
 if __name__ == "__main__":
