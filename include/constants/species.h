@@ -1701,8 +1701,14 @@
 #define SPECIES_KARIN                                     1576
 
 
+#define SPECIES_CZEPHYRA                                  1577
+
+
+#define SPECIES_EZEPHYRA                                  1578
+
+
 //Leamon species end here
-#define SPECIES_EGG                                     (SPECIES_KARIN + 1)
+#define SPECIES_EGG                                     (SPECIES_EZEPHYRA + 1)
 
 #define NUM_SPECIES SPECIES_EGG
 
