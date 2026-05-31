@@ -1692,8 +1692,11 @@
 #define SPECIES_YURIA                                   1573
 
 
+#define SPECIES_ZEPHYRA                                   1574
+
+
 //Leamon species end here
-#define SPECIES_EGG                                     (SPECIES_YURIA + 1)
+#define SPECIES_EGG                                     (SPECIES_ZEPHYRA + 1)
 
 #define NUM_SPECIES SPECIES_EGG
 

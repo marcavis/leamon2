@@ -228,6 +228,60 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .teachableLearnset = sNoneTeachableLearnset,
     },
 
+
+    [SPECIES_ZEPHYRA] =
+    {
+        .baseHP        = 40,
+        .baseAttack    = 60,
+        .baseDefense   = 40,
+        .baseSpeed     = 80,
+        .baseSpAttack  = 50,
+        .baseSpDefense = 45,
+        .types = MON_TYPES(TYPE_FIGHTING, TYPE_FLYING),
+        .catchRate = 220,
+        .expYield = 70,
+        .evYield_Speed = 1,
+        .genderRatio = PERCENT_FEMALE(50),
+        .eggCycles = 20,
+        .friendship = STANDARD_FRIENDSHIP,
+        .growthRate = GROWTH_MEDIUM_FAST,
+        .eggGroups = MON_EGG_GROUPS(EGG_GROUP_NO_EGGS_DISCOVERED),
+        .abilities = { ABILITY_NONE, ABILITY_CURSED_BODY, ABILITY_DAMP },
+        .bodyColor = BODY_COLOR_BLACK,
+        .speciesName = _("Zephyra"),
+        .cryId = CRY_NONE,
+        .natDexNum = NATIONAL_DEX_ZEPHYRA,
+        .categoryName = _("Unknown"),
+        .height = 15,
+        .weight = 410,
+        .description = COMPOUND_STRING(
+            "Always looking to score.\n"
+            "ononono.\n"
+            "nonononon\n"
+            "onononon."),
+        .pokemonScale = 256,
+        .pokemonOffset = 0,
+        .trainerScale = 256,
+        .trainerOffset = 0,
+        .frontPic = gMonFrontPic_Zephyra,
+        .frontPicSize = MON_COORDS_SIZE(64, 64),
+        .frontPicYOffset = 0,
+        .frontAnimFrames = ANIM_FRAMES(
+            ANIMCMD_FRAME(0,1),
+        ),
+        .backPic = gMonBackPic_Zephyra,
+        .backPicSize = MON_COORDS_SIZE(64, 64),
+        .backPicYOffset = 0,
+        .backAnimId = BACK_ANIM_NONE,
+        .palette = gMonPalette_Zephyra,
+        .shinyPalette = gMonShinyPalette_Zephyra,
+        .iconSprite = gMonIcon_Zephyra,
+        .iconPalIndex = 0,
+        SHADOW(-2, 16, SHADOW_SIZE_S)
+        FOOTPRINT(Zephyra)
+        .levelUpLearnset = sZephyraLevelUpLearnset,
+        .teachableLearnset = sNoneTeachableLearnset,
+    },
     /* You may add any custom species below this point based on the following structure: */
 
     /*

@@ -27512,3 +27512,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Yuria[] = INCGFX_U16("graphics/pokemon/yuria/shiny.pal", ".gbapal");
     const u8 gMonIcon_Yuria[] = INCGFX_U8("graphics/pokemon/yuria/icon.png", ".4bpp");
     const u8 gMonFootprint_Yuria[] = INCGFX_U8("graphics/pokemon/yuria/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Zephyra[] = INCGFX_U32("graphics/pokemon/zephyra/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Zephyra[] = INCGFX_U32("graphics/pokemon/zephyra/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Zephyra[] = INCGFX_U16("graphics/pokemon/zephyra/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Zephyra[] = INCGFX_U16("graphics/pokemon/zephyra/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Zephyra[] = INCGFX_U8("graphics/pokemon/zephyra/icon.png", ".4bpp");
+    const u8 gMonFootprint_Zephyra[] = INCGFX_U8("graphics/pokemon/zephyra/footprint.png", ".1bpp");
