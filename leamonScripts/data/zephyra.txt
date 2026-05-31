@@ -1,22 +1,21 @@
-# Yuria definition file
-# Generated from the currently committed Yuria data in species_info.h
-# and leamon_learnsets.h
+NAME = zephyra
+DISPLAY_NAME = Zephyra
 
-NAME = yuria
-DISPLAY_NAME = Yuria
 
 BASE_HP = 40
-BASE_ATTACK = 70
-BASE_DEFENSE = 30
-BASE_SP_ATTACK = 25
-BASE_SP_DEFENSE = 40
-BASE_SPEED = 85
+BASE_ATTACK = 60
+BASE_DEFENSE = 40
+BASE_SP_ATTACK = 50
+BASE_SP_DEFENSE = 45
+BASE_SPEED = 80
+BST = 315
 
-TYPE1 = TYPE_DARK
+TYPE1 = TYPE_FIGHTING
+TYPE2 = TYPE_FLYING
 
-CATCH_RATE = 255
-EXP_YIELD = 67
-EV_ATTACK = 1
+CATCH_RATE = 220
+EXP_YIELD = 70
+EV_SPEED = 1
 
 GENDER_RATIO = PERCENT_FEMALE(50)
 EGG_CYCLES = 20
