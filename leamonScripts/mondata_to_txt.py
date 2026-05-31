@@ -224,7 +224,7 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
 
     description_lines = split_description(pokedex[2:6])
     if not description_lines:
-        raise ValueError(f"No description text found for {species_name!r}")
+        description_lines = ["TODO: Pokedex description"]
 
     learnset_lines: list[str] = []
     for level, move in zip(learnset_levels[2:], learnset_moves[2:]):

@@ -51,7 +51,7 @@ GENDER_RATIO = PERCENT_FEMALE(50)
 EGG_CYCLES = 20
 FRIENDSHIP = STANDARD_FRIENDSHIP
 GROWTH_RATE = GROWTH_MEDIUM_FAST
-EGG_GROUP1 = EGG_GROUP_FIELD
+EGG_GROUP1 = EGG_GROUP_HUMAN_LIKE
 # EGG_GROUP2 =          # leave blank to mirror EGG_GROUP1
 
 # ── Abilities ───────────────────────────────────────────────
