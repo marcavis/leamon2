@@ -213,6 +213,71 @@ def insert_before_closing_brace(content: str, array_decl: str, new_line: str) ->
     return content[:insert_at] + f"    {new_line},\n" + content[insert_at:]
 
 
+def load_species_dimensions() -> dict[str, tuple[int, int]]:
+    """Return a map of NATIONAL_DEX_<NAME> to (height, weight) from species_info.h."""
+    path = REPO_ROOT / "src" / "data" / "pokemon" / "species_info.h"
+    content = read_file(path)
+    dimensions: dict[str, tuple[int, int]] = {}
+
+    for match in re.finditer(r"\[SPECIES_(\w+)\]\s*=\s*\{([\s\S]*?)\n\s*\},", content):
+        block = match.group(2)
+        height_match = re.search(r"\.height\s*=\s*(\d+)", block)
+        weight_match = re.search(r"\.weight\s*=\s*(\d+)", block)
+        if height_match and weight_match:
+            dimensions[f"NATIONAL_DEX_{match.group(1)}"] = (int(height_match.group(1)), int(weight_match.group(1)))
+
+    return dimensions
+
+
+def insert_before_metric_match(content: str, array_decl: str, new_entry: str, new_value: int,
+                               species_values: dict[str, int]) -> str:
+    """Insert new_entry into a sorted array using the metric value from species_values."""
+    decl_match = re.search(re.escape(array_decl), content)
+    if not decl_match:
+        raise ValueError(f"Array declaration not found: {array_decl!r}")
+
+    tail = content[decl_match.end():]
+    close_match = re.search(r"^};", tail, re.MULTILINE)
+    if not close_match:
+        raise ValueError(f"Could not find closing '}}' for array {array_decl!r}")
+
+    start = decl_match.end()
+    end = decl_match.end() + close_match.start()
+    block_lines = content[start:end].splitlines(keepends=True)
+
+    insert_idx = None
+    indent = "    "
+    for line in block_lines:
+        if line.strip():
+            indent_match = re.match(r"^(\s*)", line)
+            if indent_match:
+                indent = indent_match.group(1)
+            break
+
+    for idx, line in enumerate(block_lines):
+        match = re.match(r"^\s*(NATIONAL_DEX_[A-Z0-9_]+),\s*$", line)
+        if not match:
+            continue
+
+        species = match.group(1)
+        current_value = species_values.get(species)
+        if current_value is None:
+            continue
+
+        if current_value == new_value:
+            insert_idx = idx + 1
+            break
+        if current_value > new_value:
+            insert_idx = idx
+            break
+
+    if insert_idx is None:
+        insert_idx = len(block_lines)
+
+    block_lines.insert(insert_idx, f"{indent}{new_entry},\n")
+    return content[:start] + "".join(block_lines) + content[end:]
+
+
 # ─── Anim frames helper ───────────────────────────────────────────────────────
 
 def parse_anim_frames(raw: str) -> list[tuple[int, int]]:
@@ -582,6 +647,7 @@ def edit_species_info_h_update(data: dict, upper: str, title: str, dry_run: bool
 def edit_pokedex_orders_h(data: dict, upper: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "src" / "data" / "pokemon" / "pokedex_orders.h"
     content = read_file(path)
+    species_dimensions = load_species_dimensions()
 
     entry = f"NATIONAL_DEX_{upper}"
 
@@ -600,6 +666,12 @@ def edit_pokedex_orders_h(data: dict, upper: str, dry_run: bool = False) -> None
                 print(f"  WARNING: {opt_key}={anchor_before!r} not found in "
                       f"pokedex_orders.h — appending {label} to end of array instead.")
                 content = insert_before_closing_brace(content, array_decl, entry)
+        elif label == "Weight":
+            content = insert_before_metric_match(content, array_decl, entry, int(data["WEIGHT"]),
+                                                 {k: v[1] for k, v in species_dimensions.items()})
+        elif label == "Height":
+            content = insert_before_metric_match(content, array_decl, entry, int(data["HEIGHT"]),
+                                                 {k: v[0] for k, v in species_dimensions.items()})
         else:
             # Append before the closing }; of this array
             content = insert_before_closing_brace(content, array_decl, entry)
