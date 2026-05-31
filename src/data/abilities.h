@@ -2436,7 +2436,7 @@ const struct AbilityInfo gAbilitiesInfo[ABILITIES_COUNT] =
     [ABILITY_GLAD_HANDING] =
     {
         .name = _("Glad-Handing"),
-        .description = COMPOUND_STRING("Contact may lower Sp. Atk."),
+        .description = COMPOUND_STRING("Lower SPA of contacted foe."),
         .aiRating = 4,
     },
 };
