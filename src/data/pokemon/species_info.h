@@ -191,7 +191,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .friendship = STANDARD_FRIENDSHIP,
         .growthRate = GROWTH_MEDIUM_FAST,
         .eggGroups = MON_EGG_GROUPS(EGG_GROUP_NO_EGGS_DISCOVERED),
-        .abilities = { ABILITY_NONE, ABILITY_CURSED_BODY, ABILITY_DAMP },
+        .abilities = { ABILITY_GLAD_HANDING, ABILITY_NONE, ABILITY_NONE },
         .bodyColor = BODY_COLOR_BLACK,
         .speciesName = _("Yuria"),
         .cryId = CRY_NONE,
@@ -246,7 +246,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .friendship = STANDARD_FRIENDSHIP,
         .growthRate = GROWTH_MEDIUM_FAST,
         .eggGroups = MON_EGG_GROUPS(EGG_GROUP_NO_EGGS_DISCOVERED),
-        .abilities = { ABILITY_NONE, ABILITY_CURSED_BODY, ABILITY_DAMP },
+        .abilities = { ABILITY_RECKLESS, ABILITY_NONE, ABILITY_NONE },
         .bodyColor = BODY_COLOR_BLACK,
         .speciesName = _("Zephyra"),
         .cryId = CRY_NONE,
@@ -277,7 +277,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .shinyPalette = gMonShinyPalette_Zephyra,
         .iconSprite = gMonIcon_Zephyra,
         .iconPalIndex = 0,
-        SHADOW(-2, 16, SHADOW_SIZE_S)
+        SHADOW(2, 16, SHADOW_SIZE_M)
         FOOTPRINT(Zephyra)
         .levelUpLearnset = sZephyraLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,

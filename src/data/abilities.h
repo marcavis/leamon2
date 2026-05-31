@@ -2432,4 +2432,11 @@ const struct AbilityInfo gAbilitiesInfo[ABILITIES_COUNT] =
         .cantBeSwapped = TRUE,
         .cantBeTraced = TRUE,
     },
+
+    [ABILITY_GLAD_HANDING] =
+    {
+        .name = _("Glad-Handing"),
+        .description = COMPOUND_STRING("Contact may lower Sp. Atk."),
+        .aiRating = 4,
+    },
 };
