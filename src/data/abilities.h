@@ -2439,4 +2439,11 @@ const struct AbilityInfo gAbilitiesInfo[ABILITIES_COUNT] =
         .description = COMPOUND_STRING("Lower SPA of contacted foe."),
         .aiRating = 4,
     },
+
+    [ABILITY_NEST_DEFENDER] =
+    {
+        .name = _("Nest Defender"),
+        .description = COMPOUND_STRING("Eggs in party raise power."),
+        .aiRating = 4,
+    },
 };

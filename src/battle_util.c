@@ -7042,6 +7042,21 @@ static inline u32 CalcAttackStat(struct BattleContext *ctx)
         if (moveType == TYPE_GRASS && gBattleMons[battlerAtk].hp <= (gBattleMons[battlerAtk].maxHP / 3))
             modifier = uq4_12_multiply_half_down(modifier, UQ_4_12(1.5));
         break;
+      case ABILITY_NEST_DEFENDER:
+      {
+          struct Pokemon *party = GetBattlerParty(battlerAtk);
+          u32 partyIndex;
+          uq4_12_t eggPower = UQ_4_12(1.0);
+
+          for (partyIndex = 0; partyIndex < PARTY_SIZE; partyIndex++)
+          {
+              if (GetMonData(&party[partyIndex], MON_DATA_IS_EGG) == TRUE)
+                  eggPower += UQ_4_12(0.2);
+          }
+
+          modifier = uq4_12_multiply_half_down(modifier, eggPower);
+          break;
+      }
     case ABILITY_PLUS:
         if (IsBattleMoveSpecial(move) && IsBattlerAlive(BATTLE_PARTNER(battlerAtk)))
         {
