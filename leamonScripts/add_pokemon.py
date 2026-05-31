@@ -91,6 +91,13 @@ def parse_definition(path: Path) -> dict:
     return data
 
 
+def format_symbol_name(value: str) -> str:
+    parts = [part for part in re.split(r"[^A-Za-z0-9]+", value.strip()) if part]
+    if not parts:
+        raise ValueError(f"Could not derive a C symbol suffix from {value!r}")
+    return "".join(part[:1].upper() + part[1:] for part in parts)
+
+
 def derive_names(data: dict, def_path: Path) -> tuple[str, str, str]:
     """
     Returns (name, upper, title):
@@ -100,21 +107,36 @@ def derive_names(data: dict, def_path: Path) -> tuple[str, str, str]:
     """
     name = data.get("NAME", def_path.stem).lower().strip()
     upper = name.upper()
-    title = data.get("TITLE_NAME", data.get("DISPLAY_NAME", name.capitalize()))
-    # title must start with uppercase for C symbols
-    title = title[0].upper() + title[1:] if title else name.capitalize()
+    title = data.get("TITLE_NAME", data.get("DISPLAY_NAME", name))
+    title = format_symbol_name(title)
     return name, upper, title
+
+
+def derive_graphics_identity(data: dict, name: str, title: str) -> tuple[str, str]:
+    image_folder = data.get("IMAGE_FOLDER", name).strip().strip("/")
+    if not image_folder:
+        image_folder = name
+
+    graphics_title = data.get("GRAPHICS_TITLE_NAME", "").strip()
+    if graphics_title:
+        graphics_title = format_symbol_name(graphics_title)
+    elif image_folder == name:
+        graphics_title = title
+    else:
+        graphics_title = format_symbol_name(image_folder)
+
+    return image_folder, graphics_title
 
 
 # ─── Validation ───────────────────────────────────────────────────────────────
 
-def check_graphics(name: str) -> bool:
+def check_graphics(image_folder: str, species_name: str) -> bool:
     """Verify all required graphics files exist. Returns True if all present."""
-    gfx_dir = REPO_ROOT / "graphics" / "pokemon" / name
+    gfx_dir = REPO_ROOT / "graphics" / "pokemon" / image_folder
     ok = True
 
     if not gfx_dir.is_dir():
-        print(f"\n  ERROR: Graphics folder does not exist:\n"
+        print(f"\n  ERROR: Graphics folder for {species_name} does not exist:\n"
               f"         {gfx_dir}\n\n"
               f"  Create or copy the folder and add the following files before running again:\n"
               + "".join(f"    • {f}\n" for f in REQUIRED_GRAPHICS))
@@ -313,7 +335,7 @@ def build_learnset_block(title: str, learnset_lines: list[str]) -> str:
     )
 
 
-def build_species_entry(data: dict, upper: str, title: str) -> str:
+def build_species_entry(data: dict, upper: str, title: str, graphics_title: str) -> str:
     # ── Build types ──────────────────────────────────────────────────────────
     t1 = data["TYPE1"]
     t2 = data.get("TYPE2", "")
@@ -432,19 +454,19 @@ def build_species_entry(data: dict, upper: str, title: str) -> str:
 {tab}{tab}.pokemonOffset = {data['POKEMON_OFFSET']},
 {tab}{tab}.trainerScale = {data['TRAINER_SCALE']},
 {tab}{tab}.trainerOffset = {data['TRAINER_OFFSET']},
-{tab}{tab}.frontPic = gMonFrontPic_{title},
+{tab}{tab}.frontPic = gMonFrontPic_{graphics_title},
 {tab}{tab}.frontPicSize = {front_size},
 {tab}{tab}.frontPicYOffset = {data['FRONT_PIC_Y_OFFSET']},
 {anim_frames_str}
-{anim_id_line}{anim_delay_line}{elev_line}{tab}{tab}.backPic = gMonBackPic_{title},
+{anim_id_line}{anim_delay_line}{elev_line}{tab}{tab}.backPic = gMonBackPic_{graphics_title},
 {tab}{tab}.backPicSize = {back_size},
 {tab}{tab}.backPicYOffset = {data['BACK_PIC_Y_OFFSET']},
 {tab}{tab}.backAnimId = {data['BACK_ANIM_ID']},
-{tab}{tab}.palette = gMonPalette_{title},
-{tab}{tab}.shinyPalette = gMonShinyPalette_{title},
-{tab}{tab}.iconSprite = gMonIcon_{title},
+{tab}{tab}.palette = gMonPalette_{graphics_title},
+{tab}{tab}.shinyPalette = gMonShinyPalette_{graphics_title},
+{tab}{tab}.iconSprite = gMonIcon_{graphics_title},
 {tab}{tab}.iconPalIndex = {data['ICON_PAL_INDEX']},
-{shadow_line}{tab}{tab}FOOTPRINT({title})
+{shadow_line}{tab}{tab}FOOTPRINT({graphics_title})
 {tab}{tab}.levelUpLearnset = s{title}LevelUpLearnset,
 {tab}{tab}.teachableLearnset = sNoneTeachableLearnset,
 {tab}}},
@@ -546,18 +568,23 @@ def edit_pokedex_h(upper: str, dry_run: bool = False) -> None:
     print(f"  {status} include/constants/pokedex.h           NATIONAL_DEX_{upper}, HOENN_DEX_{upper}")
 
 
-def edit_graphics_h(name: str, title: str, dry_run: bool = False) -> None:
+def edit_graphics_h(name: str, title: str, image_folder: str, graphics_title: str, dry_run: bool = False) -> None:
+    if image_folder != name or graphics_title != title:
+        status = "[DRY-RUN]" if dry_run else "[OK]"
+        print(f"  {status} src/data/graphics/pokemon.h           reusing gMonFrontPic_{graphics_title}, no new declarations")
+        return
+
     path = REPO_ROOT / "src" / "data" / "graphics" / "pokemon.h"
     content = read_file(path)
 
     sprite_block = (
         f"\n"
-        f'    const u32 gMonFrontPic_{title}[] = INCGFX_U32("graphics/pokemon/{name}/anim_front.png", ".4bpp.lz");\n'
-        f'    const u32 gMonBackPic_{title}[] = INCGFX_U32("graphics/pokemon/{name}/back.png", ".4bpp.lz");\n'
-        f'    const u16 gMonPalette_{title}[] = INCGFX_U16("graphics/pokemon/{name}/normal.pal", ".gbapal");\n'
-        f'    const u16 gMonShinyPalette_{title}[] = INCGFX_U16("graphics/pokemon/{name}/shiny.pal", ".gbapal");\n'
-        f'    const u8 gMonIcon_{title}[] = INCGFX_U8("graphics/pokemon/{name}/icon.png", ".4bpp");\n'
-        f'    const u8 gMonFootprint_{title}[] = INCGFX_U8("graphics/pokemon/{name}/footprint.png", ".1bpp");'
+        f'    const u32 gMonFrontPic_{title}[] = INCGFX_U32("graphics/pokemon/{image_folder}/anim_front.png", ".4bpp.lz");\n'
+        f'    const u32 gMonBackPic_{title}[] = INCGFX_U32("graphics/pokemon/{image_folder}/back.png", ".4bpp.lz");\n'
+        f'    const u16 gMonPalette_{title}[] = INCGFX_U16("graphics/pokemon/{image_folder}/normal.pal", ".gbapal");\n'
+        f'    const u16 gMonShinyPalette_{title}[] = INCGFX_U16("graphics/pokemon/{image_folder}/shiny.pal", ".gbapal");\n'
+        f'    const u8 gMonIcon_{title}[] = INCGFX_U8("graphics/pokemon/{image_folder}/icon.png", ".4bpp");\n'
+        f'    const u8 gMonFootprint_{title}[] = INCGFX_U8("graphics/pokemon/{image_folder}/footprint.png", ".1bpp");'
     )
 
     # Append after the last line of the file (no trailing newline guard)
@@ -579,11 +606,11 @@ def edit_learnsets_h(upper: str, title: str, learnset_lines: list[str], dry_run:
     print(f"  {status} leamon_learnsets.h                    s{title}LevelUpLearnset")
 
 
-def edit_species_info_h(data: dict, upper: str, title: str, dry_run: bool = False) -> None:
+def edit_species_info_h(data: dict, upper: str, title: str, graphics_title: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "src" / "data" / "pokemon" / "species_info.h"
     content = read_file(path)
 
-    entry = build_species_entry(data, upper, title)
+    entry = build_species_entry(data, upper, title, graphics_title)
 
     anchor = "    /* You may add any custom species below this point"
     if anchor not in content:
@@ -613,7 +640,7 @@ def edit_learnsets_h_update(title: str, learnset_lines: list[str], dry_run: bool
     print(f"  {status} leamon_learnsets.h                    s{title}LevelUpLearnset (updated)")
 
 
-def edit_species_info_h_update(data: dict, upper: str, title: str, dry_run: bool = False) -> None:
+def edit_species_info_h_update(data: dict, upper: str, title: str, graphics_title: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "src" / "data" / "pokemon" / "species_info.h"
     content = read_file(path)
 
@@ -650,7 +677,7 @@ def edit_species_info_h_update(data: dict, upper: str, title: str, dry_run: bool
     if block_end < len(content) and content[block_end] == "\n":
         block_end += 1
 
-    new_entry = build_species_entry(data, upper, title).lstrip("\n")
+    new_entry = build_species_entry(data, upper, title, graphics_title).lstrip("\n")
     content = content[:block_start] + new_entry + content[block_end:]
 
     write_file(path, content, dry_run)
@@ -739,13 +766,14 @@ def main() -> None:
     print(f"\nReading definition file: {def_path.name}")
     data = parse_definition(def_path)
     name, upper, title = derive_names(data, def_path)
-    print(f"  Pokémon: {name}  (SPECIES_{upper}, gMonFrontPic_{title})")
+    image_folder, graphics_title = derive_graphics_identity(data, name, title)
+    print(f"  Pokémon: {name}  (SPECIES_{upper}, gMonFrontPic_{graphics_title})")
     if args.dry_run:
         print("  Mode: dry run (no files will be written)")
 
     # ── Step 1: Check graphics ─────────────────────────────────────────────────
-    print(f"\nChecking graphics/pokemon/{name}/ ...")
-    if not check_graphics(name):
+    print(f"\nChecking graphics/pokemon/{image_folder}/ ...")
+    if not check_graphics(image_folder, name):
         sys.exit(1)
     print("  All required graphics files found.")
 
@@ -774,15 +802,15 @@ def main() -> None:
     if args.update:
         tasks = [
             (edit_learnsets_h_update, (title, data["_LEARNSET_LINES"], args.dry_run), "leamon_learnsets.h"),
-            (edit_species_info_h_update, (data, upper, title, args.dry_run), "src/data/pokemon/species_info.h"),
+            (edit_species_info_h_update, (data, upper, title, graphics_title, args.dry_run), "src/data/pokemon/species_info.h"),
         ]
     else:
         tasks = [
             (edit_species_h,       (name, upper, args.dry_run),                      "include/constants/species.h"),
             (edit_pokedex_h,       (upper, args.dry_run),                            "include/constants/pokedex.h"),
-            (edit_graphics_h,      (name, title, args.dry_run),                      "src/data/graphics/pokemon.h"),
+            (edit_graphics_h,      (name, title, image_folder, graphics_title, args.dry_run), "src/data/graphics/pokemon.h"),
             (edit_learnsets_h,     (upper, title, data["_LEARNSET_LINES"], args.dry_run), "leamon_learnsets.h"),
-            (edit_species_info_h,  (data, upper, title, args.dry_run),               "src/data/pokemon/species_info.h"),
+            (edit_species_info_h,  (data, upper, title, graphics_title, args.dry_run), "src/data/pokemon/species_info.h"),
             (edit_pokedex_orders_h,(data, upper, args.dry_run),                      "src/data/pokemon/pokedex_orders.h"),
             (edit_pokemon_c,       (upper, args.dry_run),                            "src/pokemon.c"),
         ]

@@ -8,9 +8,14 @@
 # DISPLAY_NAME: in-game name shown in text boxes  (defaults to NAME.capitalize())
 # TITLE_NAME  : capitalized form used in C symbol names (e.g. gMonFrontPic_<TITLE_NAME>)
 #               Defaults to NAME.capitalize(). Override only for multi-word names.
+# IMAGE_FOLDER: graphics/pokemon/<IMAGE_FOLDER>/ to use for sprites. Defaults to NAME.
+# GRAPHICS_TITLE_NAME: C symbol suffix for shared graphics (e.g. Karin for gMonFrontPic_Karin).
+#                      Defaults to TITLE_NAME when IMAGE_FOLDER matches NAME.
 NAME = moe
 # DISPLAY_NAME = Moe
 # TITLE_NAME = Moe
+# IMAGE_FOLDER = moe
+# GRAPHICS_TITLE_NAME = Moe
 
 # ── Base Stats ──────────────────────────────────────────────
 BASE_HP = 60

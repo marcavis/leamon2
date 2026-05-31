@@ -122,6 +122,13 @@ def normalize_enum_suffix(value: str) -> str:
     return sanitize_identifier(value).upper()
 
 
+def format_symbol_name(value: str) -> str:
+    words = [word for word in re.split(r"[^A-Za-z0-9]+", value.strip()) if word]
+    if not words:
+        raise ValueError(f"Could not derive a symbol name from {value!r}")
+    return "".join(word[:1].upper() + word[1:] for word in words)
+
+
 def format_gender_ratio(value: str, fallback: str = "50") -> str:
     cleaned = normalize_text(value) or fallback
     if cleaned.casefold() == "genderless":
@@ -202,6 +209,7 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
     }
 
     image_map = {
+        "IMAGE_FOLDER": images[1] if len(images) > 1 and images[1].strip() else file_name,
         "FRONT_ANIM_FRAMES": images[5] if len(images) > 5 and images[5].strip() else defaults.get("animate", "[(0,1)]"),
         "BACK_ANIM_ID": images[3] if len(images) > 3 and images[3].strip() else defaults.get("backAnim", "BACK_ANIM_NONE"),
         "FRONT_PIC_SIZE": images[6] if len(images) > 6 and images[6].strip() else defaults.get("frontSpriteSize", "(64,64)"),
@@ -234,6 +242,10 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
     out.append("# Generated from leamonScripts/mondata.ods by mondata_to_txt.py")
     out.append(f"NAME = {file_name}")
     out.append(f"DISPLAY_NAME = {display_name}")
+    image_folder = sanitize_identifier(image_map["IMAGE_FOLDER"]).lower()
+    if image_folder and image_folder != file_name:
+        out.append(f"IMAGE_FOLDER = {image_folder}")
+        out.append(f"GRAPHICS_TITLE_NAME = {format_symbol_name(image_map['IMAGE_FOLDER'])}")
     out.append("")
     out.append(f"BASE_HP = {stats_map['BASE_HP']}")
     out.append(f"BASE_ATTACK = {stats_map['BASE_ATTACK']}")
