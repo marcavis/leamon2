@@ -382,6 +382,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .shinyPalette = gMonShinyPalette_Karin,
         .iconSprite = gMonIcon_Karin,
         .iconPalIndex = 0,
+        SHADOW(2, 16, SHADOW_SIZE_M)
         FOOTPRINT(Karin)
         .levelUpLearnset = sKarinLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
