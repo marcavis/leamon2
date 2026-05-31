@@ -616,22 +616,22 @@ def analyze_paired_source_sprites(
 
     back_visible_counts = Counter(pixel for pixel in back_pixels if pixel[3] > 0)
     back_sorted = sorted(back_visible_counts.items(), key=lambda item: (-item[1], item[0]))
-    back_only_sorted = sorted(
-        back_only_visible,
-        key=lambda color: (-back_visible_counts[color], color),
-    )
-    back_remap_to_front = map_unpopular_to_nearest_popular(back_only_sorted, front_popular)
+    back_popular = [color for color, _count in back_sorted[:front_limit]]
+    back_unpopular = [color for color, _count in back_sorted[front_limit:]]
+    back_unpopular_set = set(back_unpopular)
+    remap_targets = front_popular if front_popular else back_popular
+    back_remap_to_front = map_unpopular_to_nearest_popular(back_unpopular, remap_targets)
     back_testing_path, back_tg_w, back_tg_h, back_tg_pixels = write_testing_ground_variants(
         back_path,
         back_width,
         back_height,
         back_pixels,
-        back_only_visible,
+        back_unpopular_set,
         back_remap_to_front,
     )
     print(
         f"    back testing ground: {back_testing_path.name} "
-        "(magenta=colors not found in front; includes palette strips)"
+        f"(magenta=back colors outside top {front_limit}; includes palette strips)"
     )
 
     if len(shared_visible) <= front_limit:
