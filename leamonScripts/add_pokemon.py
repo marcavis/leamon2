@@ -107,7 +107,9 @@ def derive_names(data: dict, def_path: Path) -> tuple[str, str, str]:
     """
     name = data.get("NAME", def_path.stem).lower().strip()
     upper = name.upper()
-    title = data.get("TITLE_NAME", data.get("DISPLAY_NAME", name))
+    # C symbol suffixes should default to NAME (stable identifier), not DISPLAY_NAME.
+    # DISPLAY_NAME may use stylized casing that doesn't match existing symbol names.
+    title = data.get("TITLE_NAME", name)
     title = format_symbol_name(title)
     return name, upper, title
 

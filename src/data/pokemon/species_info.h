@@ -248,7 +248,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .eggGroups = MON_EGG_GROUPS(EGG_GROUP_HUMAN_LIKE),
         .abilities = { ABILITY_RECKLESS, ABILITY_NONE, ABILITY_NONE },
         .bodyColor = BODY_COLOR_RED,
-        .speciesName = _("zephyra"),
+        .speciesName = _("Zephyra"),
         .cryId = CRY_NONE,
         .natDexNum = NATIONAL_DEX_ZEPHYRA,
         .categoryName = _("Demon-deer"),
@@ -274,6 +274,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .shinyPalette = gMonShinyPalette_Zephyra,
         .iconSprite = gMonIcon_Zephyra,
         .iconPalIndex = 0,
+        SHADOW(2, 16, SHADOW_SIZE_M)
         FOOTPRINT(Zephyra)
         .levelUpLearnset = sZephyraLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
@@ -403,7 +404,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .eggGroups = MON_EGG_GROUPS(EGG_GROUP_HUMAN_LIKE),
         .abilities = { ABILITY_RECKLESS, ABILITY_NONE, ABILITY_NONE },
         .bodyColor = BODY_COLOR_RED,
-        .speciesName = _("czephyra"),
+        .speciesName = _("CZephyra"),
         .cryId = CRY_NONE,
         .natDexNum = NATIONAL_DEX_CZEPHYRA,
         .categoryName = _("Demon-deer"),
@@ -454,7 +455,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .eggGroups = MON_EGG_GROUPS(EGG_GROUP_HUMAN_LIKE),
         .abilities = { ABILITY_RECKLESS, ABILITY_NONE, ABILITY_NONE },
         .bodyColor = BODY_COLOR_RED,
-        .speciesName = _("ezephyra"),
+        .speciesName = _("EZephyra"),
         .cryId = CRY_NONE,
         .natDexNum = NATIONAL_DEX_EZEPHYRA,
         .categoryName = _("Demon-deer"),
@@ -480,6 +481,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .shinyPalette = gMonShinyPalette_Zephyra,
         .iconSprite = gMonIcon_Zephyra,
         .iconPalIndex = 0,
+        SHADOW(2, 16, SHADOW_SIZE_M)
         FOOTPRINT(Zephyra)
         .levelUpLearnset = sEzephyraLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
