@@ -30,6 +30,26 @@ DEFAULT_BG_RGB = (152, 208, 160)
 
 RgbaColor: TypeAlias = tuple[int, int, int, int]
 
+FONT_5X7: dict[str, tuple[str, ...]] = {
+    "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "B": ("11110", "10001", "10001", "11110", "10001", "10001", "11110"),
+    "C": ("01110", "10001", "10000", "10000", "10000", "10001", "01110"),
+    "D": ("11100", "10010", "10001", "10001", "10001", "10010", "11100"),
+    "E": ("11111", "10000", "10000", "11110", "10000", "10000", "11111"),
+    "F": ("11111", "10000", "10000", "11110", "10000", "10000", "10000"),
+    "H": ("10001", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "K": ("10001", "10010", "10100", "11000", "10100", "10010", "10001"),
+    "L": ("10000", "10000", "10000", "10000", "10000", "10000", "11111"),
+    "N": ("10001", "11001", "10101", "10011", "10001", "10001", "10001"),
+    "O": ("01110", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "R": ("11110", "10001", "10001", "11110", "10100", "10010", "10001"),
+    "S": ("01111", "10000", "10000", "01110", "00001", "00001", "11110"),
+    "T": ("11111", "00100", "00100", "00100", "00100", "00100", "00100"),
+    "Y": ("10001", "10001", "01010", "00100", "00100", "00100", "00100"),
+    "-": ("00000", "00000", "00000", "11111", "00000", "00000", "00000"),
+    " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
+}
+
 
 class PngDecodeError(Exception):
     pass
@@ -438,10 +458,71 @@ def write_testing_grounds_combined(
     bottom_width: int,
     bottom_height: int,
     bottom_pixels: list[RgbaColor],
+    front_only_colors: list[RgbaColor],
+    shared_colors: list[RgbaColor],
+    back_only_colors: list[RgbaColor],
 ) -> Path:
-    combined_width = max(top_width, bottom_width)
-    combined_height = top_height + bottom_height
+    label_rows = [
+        ("FRONT-ONLY COLORS", front_only_colors),
+        ("SHARED COLORS", shared_colors),
+        ("BACK-ONLY COLORS", back_only_colors),
+    ]
+
+    left_pad = 6
+    right_pad = 6
+    label_width = 108
+    swatch_size = 8
+    swatch_gap = 1
+    section_pad_top = 4
+    section_pad_bottom = 4
+    row_gap = 3
+    text_color: RgbaColor = (232, 232, 232, 255)
+    panel_bg: RgbaColor = (22, 22, 22, 255)
+    panel_separator: RgbaColor = (64, 64, 64, 255)
+
+    min_legend_width = left_pad + label_width + 8 + 16 * (swatch_size + swatch_gap) + right_pad
+    combined_width = max(top_width, bottom_width, min_legend_width)
+
+    max_swatch_span = max(1, combined_width - (left_pad + label_width + 8 + right_pad))
+    swatches_per_row = max(1, max_swatch_span // (swatch_size + swatch_gap))
+
+    def swatch_rows_needed(color_count: int) -> int:
+        return max(1, math.ceil(color_count / swatches_per_row))
+
+    section_heights: list[int] = []
+    for _label, colors in label_rows:
+        rows = swatch_rows_needed(len(colors))
+        swatch_block_h = rows * swatch_size + max(0, rows - 1) * swatch_gap
+        text_h = 7
+        section_h = section_pad_top + max(text_h, swatch_block_h) + section_pad_bottom
+        section_heights.append(section_h)
+
+    legend_height = sum(section_heights) + row_gap * (len(section_heights) - 1)
+    combined_height = top_height + legend_height + bottom_height
     combined_pixels: list[RgbaColor] = [(0, 0, 0, 0)] * (combined_width * combined_height)
+
+    def set_pixel(x: int, y: int, color: RgbaColor) -> None:
+        if 0 <= x < combined_width and 0 <= y < combined_height:
+            combined_pixels[y * combined_width + x] = color
+
+    def fill_rect(x: int, y: int, w: int, h: int, color: RgbaColor) -> None:
+        if w <= 0 or h <= 0:
+            return
+        for yy in range(y, y + h):
+            row_start = yy * combined_width
+            start = row_start + x
+            end = start + w
+            combined_pixels[start:end] = [color] * w
+
+    def draw_text(x: int, y: int, text: str, color: RgbaColor) -> None:
+        cursor_x = x
+        for char in text.upper():
+            glyph = FONT_5X7.get(char, FONT_5X7[" "])
+            for gy, row in enumerate(glyph):
+                for gx, bit in enumerate(row):
+                    if bit == "1":
+                        set_pixel(cursor_x + gx, y + gy, color)
+            cursor_x += 6
 
     def blit(src_width: int, src_height: int, src_pixels: list[RgbaColor], dst_x: int, dst_y: int) -> None:
         for y in range(src_height):
@@ -450,7 +531,36 @@ def write_testing_grounds_combined(
             combined_pixels[dst_start : dst_start + src_width] = src_pixels[src_start : src_start + src_width]
 
     blit(top_width, top_height, top_pixels, 0, 0)
-    blit(bottom_width, bottom_height, bottom_pixels, 0, top_height)
+
+    legend_y = top_height
+    fill_rect(0, legend_y, combined_width, legend_height, panel_bg)
+    fill_rect(0, legend_y, combined_width, 1, panel_separator)
+    fill_rect(0, legend_y + legend_height - 1, combined_width, 1, panel_separator)
+
+    section_y = legend_y
+    swatch_x0 = left_pad + label_width + 8
+    for index, (label, colors) in enumerate(label_rows):
+        section_h = section_heights[index]
+        text_y = section_y + section_pad_top
+        draw_text(left_pad, text_y, label, text_color)
+
+        rows = swatch_rows_needed(len(colors))
+        for i, color in enumerate(colors):
+            row = i // swatches_per_row
+            col = i % swatches_per_row
+            sw_x = swatch_x0 + col * (swatch_size + swatch_gap)
+            sw_y = section_y + section_pad_top + row * (swatch_size + swatch_gap)
+            fill_rect(sw_x, sw_y, swatch_size, swatch_size, color)
+
+        if not colors:
+            draw_text(swatch_x0, text_y, "NONE", text_color)
+
+        section_y += section_h
+        if index < len(label_rows) - 1:
+            fill_rect(0, section_y, combined_width, 1, panel_separator)
+            section_y += row_gap
+
+    blit(bottom_width, bottom_height, bottom_pixels, 0, top_height + legend_height)
 
     combined_path = folder / f"testing-grounds-combined-{front_stem}.png"
     write_rgba_png(combined_path, combined_width, combined_height, combined_pixels)
@@ -634,6 +744,14 @@ def analyze_paired_source_sprites(
         f"(magenta=back colors outside top {front_limit}; includes palette strips)"
     )
 
+    auto_front_target = folder / f"auto{front_path.stem}.png"
+    auto_back_target = folder / f"auto{front_path.stem}back.png"
+    front_auto_pixels = [front_remap.get(pixel, pixel) for pixel in front_pixels]
+    back_auto_pixels = [back_remap_to_front.get(pixel, pixel) for pixel in back_pixels]
+    write_rgba_png(auto_front_target, front_width, front_height, front_auto_pixels)
+    write_rgba_png(auto_back_target, back_width, back_height, back_auto_pixels)
+    print(f"    auto exports: {auto_front_target.name}, {auto_back_target.name}")
+
     if len(shared_visible) <= front_limit:
         print(
             f"    shared normal.pal fits the limit: yes (<= {front_limit})"
@@ -692,6 +810,9 @@ def analyze_paired_source_sprites(
             back_tg_w,
             back_tg_h,
             back_tg_pixels,
+            sorted(front_only_visible),
+            sorted(matching_visible),
+            sorted(back_only_visible),
         )
         print(f"    combined testing grounds: {combined_path.name}")
 
