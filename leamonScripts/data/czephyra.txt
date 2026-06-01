@@ -1,6 +1,6 @@
 # Generated from leamonScripts/mondata.ods by mondata_to_txt.py
 NAME = czephyra
-DISPLAY_NAME = czephyra
+DISPLAY_NAME = CZephyra
 IMAGE_FOLDER = zephyra
 GRAPHICS_TITLE_NAME = Zephyra
 
@@ -32,12 +32,6 @@ ABILITY_HIDDEN = ABILITY_NONE
 
 BODY_COLOR = BODY_COLOR_RED
 
-# Battle shadow tuning (optional; consumed by add_pokemon.py)
-# Negative X moves shadow left; positive Y moves it down toward feet.
-SHADOW_X_OFFSET = 2
-SHADOW_Y_OFFSET = 16
-SHADOW_SIZE = SHADOW_SIZE_M
-
 CATEGORY_NAME = Demon-deer
 HEIGHT = 16
 WEIGHT = 480
@@ -52,6 +46,12 @@ FRONT_PIC_SIZE = 64,64
 FRONT_PIC_Y_OFFSET = 0
 BACK_PIC_SIZE = 64,64
 BACK_PIC_Y_OFFSET = 0
+
+# Battle shadow tuning (optional; consumed by add_pokemon.py)
+# Negative X moves shadow left; positive Y moves it down toward feet.
+SHADOW_X_OFFSET = 2
+SHADOW_Y_OFFSET = 16
+SHADOW_SIZE = SHADOW_SIZE_M
 
 FRONT_ANIM_FRAMES = (0,1)
 BACK_ANIM_ID = BACK_ANIM_H_VIBRATE

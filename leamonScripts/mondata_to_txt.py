@@ -140,6 +140,15 @@ def format_move_name(value: str) -> str:
     return f"MOVE_{sanitize_identifier(value).upper()}"
 
 
+def format_shadow_size(value: str, fallback: str = "SHADOW_SIZE_M") -> str:
+    cleaned = normalize_text(value)
+    if not cleaned:
+        return fallback
+    if cleaned.startswith("SHADOW_SIZE_"):
+        return cleaned
+    return f"SHADOW_SIZE_{sanitize_identifier(cleaned).upper()}"
+
+
 def split_description(raw_parts: list[str]) -> list[str]:
     parts = [normalize_text(part) for part in raw_parts if normalize_text(part)]
     return parts[:4]
@@ -216,10 +225,13 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
         "FRONT_PIC_Y_OFFSET": images[7] if len(images) > 7 and images[7].strip() else defaults.get("frontYOffset", "0"),
         "BACK_PIC_SIZE": images[8] if len(images) > 8 and images[8].strip() else defaults.get("backSpriteSize", "(64,64)"),
         "BACK_PIC_Y_OFFSET": images[9] if len(images) > 9 and images[9].strip() else defaults.get("backYOffset", "0"),
+        "SHADOW_X_OFFSET": images[10] if len(images) > 10 and images[10].strip() else defaults.get("shadowXOffset", "2"),
+        "SHADOW_Y_OFFSET": images[11] if len(images) > 11 and images[11].strip() else defaults.get("shadowYOffset", "16"),
+        "SHADOW_SIZE": images[12] if len(images) > 12 and images[12].strip() else defaults.get("shadowSize", "SHADOW_SIZE_M"),
         "ICON_PAL_INDEX": images[4] if len(images) > 4 and images[4].strip() else "0",
     }
 
-    display_name = species_name
+    display_name = normalize_text(pokedex[1]) if len(pokedex) > 1 and normalize_text(pokedex[1]) else species_name
     file_name = sanitize_identifier(species_name).lower()
 
     description_lines = split_description(pokedex[2:6])
@@ -307,6 +319,12 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
     out.append(f"FRONT_PIC_Y_OFFSET = {image_map['FRONT_PIC_Y_OFFSET']}")
     out.append(f"BACK_PIC_SIZE = {back_size[0]},{back_size[1]}")
     out.append(f"BACK_PIC_Y_OFFSET = {image_map['BACK_PIC_Y_OFFSET']}")
+    out.append("")
+    out.append("# Battle shadow tuning (optional; consumed by add_pokemon.py)")
+    out.append("# Negative X moves shadow left; positive Y moves it down toward feet.")
+    out.append(f"SHADOW_X_OFFSET = {image_map['SHADOW_X_OFFSET']}")
+    out.append(f"SHADOW_Y_OFFSET = {image_map['SHADOW_Y_OFFSET']}")
+    out.append(f"SHADOW_SIZE = {format_shadow_size(image_map['SHADOW_SIZE'])}")
     out.append("")
     out.append(f"FRONT_ANIM_FRAMES = {parse_anim_frames(image_map['FRONT_ANIM_FRAMES'])}")
     out.append(f"BACK_ANIM_ID = {image_map['BACK_ANIM_ID']}")

@@ -1,6 +1,6 @@
 # Generated from leamonScripts/mondata.ods by mondata_to_txt.py
 NAME = zephyra
-DISPLAY_NAME = zephyra
+DISPLAY_NAME = Zephyra
 
 BASE_HP = 55
 BASE_ATTACK = 90
