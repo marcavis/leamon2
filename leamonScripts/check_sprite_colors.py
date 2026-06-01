@@ -479,6 +479,7 @@ def write_testing_grounds_combined(
     text_color: RgbaColor = (232, 232, 232, 255)
     panel_bg: RgbaColor = (22, 22, 22, 255)
     panel_separator: RgbaColor = (64, 64, 64, 255)
+    swatch_border: RgbaColor = (255, 255, 255, 255)
 
     min_legend_width = left_pad + label_width + 8 + 16 * (swatch_size + swatch_gap) + right_pad
     combined_width = max(top_width, bottom_width, min_legend_width)
@@ -524,6 +525,12 @@ def write_testing_grounds_combined(
                         set_pixel(cursor_x + gx, y + gy, color)
             cursor_x += 6
 
+    def draw_swatch(x: int, y: int, color: RgbaColor) -> None:
+        # 1px white border for contrast on dark colors.
+        fill_rect(x, y, swatch_size, swatch_size, swatch_border)
+        if swatch_size > 2:
+            fill_rect(x + 1, y + 1, swatch_size - 2, swatch_size - 2, color)
+
     def blit(src_width: int, src_height: int, src_pixels: list[RgbaColor], dst_x: int, dst_y: int) -> None:
         for y in range(src_height):
             src_start = y * src_width
@@ -550,7 +557,7 @@ def write_testing_grounds_combined(
             col = i % swatches_per_row
             sw_x = swatch_x0 + col * (swatch_size + swatch_gap)
             sw_y = section_y + section_pad_top + row * (swatch_size + swatch_gap)
-            fill_rect(sw_x, sw_y, swatch_size, swatch_size, color)
+            draw_swatch(sw_x, sw_y, color)
 
         if not colors:
             draw_text(swatch_x0, text_y, "NONE", text_color)
