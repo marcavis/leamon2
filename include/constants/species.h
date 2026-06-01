@@ -1707,8 +1707,17 @@
 #define SPECIES_EZEPHYRA                                  1578
 
 
+#define SPECIES_CADELAIDE                                 1579
+
+
+#define SPECIES_ADELAIDE                                  1580
+
+
+#define SPECIES_EADELAIDE                                 1581
+
+
 //Leamon species end here
-#define SPECIES_EGG                                     (SPECIES_EZEPHYRA + 1)
+#define SPECIES_EGG                                     (SPECIES_EADELAIDE + 1)
 
 #define NUM_SPECIES SPECIES_EGG
 

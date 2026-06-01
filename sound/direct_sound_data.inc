@@ -8740,6 +8740,10 @@ Cry_Pecharunt::
 .endif @ P_FAMILY_PECHARUNT
 .endif @ P_CRIES_ENABLED
 
+	.align 2
+Cry_Adelaide::
+	.incbin "sound/direct_sound_samples/cries/adelaide.bin"
+
 .if TESTING == TRUE
 @ Tests use a single shared cry for all mons, and Fletchling is the standard measurement
 	.align 2
