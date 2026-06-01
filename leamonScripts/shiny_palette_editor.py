@@ -118,6 +118,7 @@ class PaletteEditorApp:
 
         ttk.Button(toolbar, text="Load Image", command=self.prompt_image).pack(side="left")
         ttk.Button(toolbar, text="Load normal.pal", command=self.prompt_palette).pack(side="left", padx=(8, 0))
+        ttk.Button(toolbar, text="Import shiny.pal", command=self.prompt_import_shiny_palette).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Export shiny.pal", command=self.export_palette).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Export preview PNG", command=self.export_preview_png).pack(side="left", padx=(8, 0))
 
@@ -171,6 +172,59 @@ class PaletteEditorApp:
         )
         if selected:
             self.load_palette(Path(selected))
+
+    def prompt_import_shiny_palette(self) -> None:
+        if not self.normal_palette:
+            messagebox.showerror("Missing normal.pal", "Load normal.pal before importing shiny.pal")
+            return
+
+        initial_dir = self.palette_path.parent if self.palette_path else Path.cwd()
+        selected = filedialog.askopenfilename(
+            title="Import shiny.pal",
+            initialdir=initial_dir,
+            filetypes=[("Palette files", "*.pal"), ("All files", "*")],
+        )
+        if not selected:
+            return
+        self.import_shiny_palette(Path(selected))
+
+    def import_shiny_palette(self, path: Path) -> None:
+        try:
+            shiny_palette = parse_jasc_palette(path)
+        except Exception as exc:
+            messagebox.showerror("Error", f"Failed to import shiny palette:\n{exc}")
+            return
+
+        if len(shiny_palette) != len(self.normal_palette):
+            messagebox.showerror(
+                "Palette size mismatch",
+                f"shiny.pal has {len(shiny_palette)} colors, but normal.pal has {len(self.normal_palette)}.",
+            )
+            return
+
+        self.edited_palette = shiny_palette[:]
+        self.custom_palette = shiny_palette[:]
+        self.using_original = [False] * len(shiny_palette)
+
+        if self.hex_vars:
+            self._syncing_fields = True
+            try:
+                for idx, rgb in enumerate(self.edited_palette):
+                    self.hex_vars[idx].set(rgb_to_hex(rgb))
+                    self.r_vars[idx].set(str(rgb[0]))
+                    self.g_vars[idx].set(str(rgb[1]))
+                    self.b_vars[idx].set(str(rgb[2]))
+            finally:
+                self._syncing_fields = False
+
+        for idx, rgb in enumerate(self.edited_palette):
+            if idx < len(self.swatch_labels):
+                self.swatch_labels[idx].configure(bg=rgb_to_hex(rgb))
+            self._set_row_invalid(idx, False)
+
+        self._refresh_toggle_buttons()
+        self.refresh_previews()
+        self.status_var.set(f"Imported shiny palette: {path}")
 
     def _refresh_zoom_buttons(self) -> None:
         for zoom, button in self.zoom_buttons.items():
