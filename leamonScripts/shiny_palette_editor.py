@@ -74,7 +74,7 @@ class PaletteEditorApp:
         self.root = root
         self.root.title("Shiny Palette Editor")
 
-        self.scale = 4
+        self.scale = 3
         self.image_path: Path | None = None
         self.palette_path: Path | None = None
 
@@ -85,13 +85,23 @@ class PaletteEditorApp:
 
         self.normal_palette: list[RgbColor] = []
         self.edited_palette: list[RgbColor] = []
+        self.custom_palette: list[RgbColor] = []
+        self.using_original: list[bool] = []
 
         self.original_preview_image: tk.PhotoImage | None = None
         self.edited_preview_image: tk.PhotoImage | None = None
 
-        self.palette_vars: list[tk.StringVar] = []
-        self.palette_entries: list[ttk.Entry] = []
+        self.hex_vars: list[tk.StringVar] = []
+        self.r_vars: list[tk.StringVar] = []
+        self.g_vars: list[tk.StringVar] = []
+        self.b_vars: list[tk.StringVar] = []
+        self.hex_entries: list[ttk.Entry] = []
+        self.dec_entries: list[tuple[ttk.Entry, ttk.Entry, ttk.Entry]] = []
+        self.swatch_labels: list[tk.Label] = []
+        self.toggle_buttons: list[ttk.Button] = []
         self.update_after_id: str | None = None
+        self.zoom_buttons: dict[int, ttk.Button] = {}
+        self._syncing_fields = False
 
         self.status_var = tk.StringVar(value="Load image and normal.pal to begin")
 
@@ -110,6 +120,15 @@ class PaletteEditorApp:
         ttk.Button(toolbar, text="Load normal.pal", command=self.prompt_palette).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Export shiny.pal", command=self.export_palette).pack(side="left", padx=(8, 0))
         ttk.Button(toolbar, text="Export preview PNG", command=self.export_preview_png).pack(side="left", padx=(8, 0))
+
+        zoom_group = ttk.Frame(toolbar)
+        zoom_group.pack(side="left", padx=(14, 0))
+        ttk.Label(zoom_group, text="Zoom:").pack(side="left", padx=(0, 4))
+        for zoom in (1, 2, 3, 4):
+            btn = ttk.Button(zoom_group, text=f"{zoom}x", command=lambda z=zoom: self.set_zoom(z))
+            btn.pack(side="left", padx=(0, 2))
+            self.zoom_buttons[zoom] = btn
+        self._refresh_zoom_buttons()
 
         previews = ttk.Frame(self.root, padding=(8, 4, 8, 8))
         previews.pack(fill="both", expand=True)
@@ -131,19 +150,8 @@ class PaletteEditorApp:
         controls = ttk.LabelFrame(self.root, text="Palette Entries", padding=8)
         controls.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
-        self.palette_scroll_canvas = tk.Canvas(controls, height=260, highlightthickness=0)
-        self.palette_scroll_canvas.pack(side="left", fill="both", expand=True)
-
-        scrollbar = ttk.Scrollbar(controls, orient="vertical", command=self.palette_scroll_canvas.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.palette_scroll_canvas.configure(yscrollcommand=scrollbar.set)
-
-        self.palette_frame = ttk.Frame(self.palette_scroll_canvas)
-        self.palette_scroll_canvas.create_window((0, 0), window=self.palette_frame, anchor="nw")
-        self.palette_frame.bind(
-            "<Configure>",
-            lambda _e: self.palette_scroll_canvas.configure(scrollregion=self.palette_scroll_canvas.bbox("all")),
-        )
+        self.palette_frame = ttk.Frame(controls)
+        self.palette_frame.pack(fill="both", expand=True)
 
         status_bar = ttk.Label(self.root, textvariable=self.status_var, anchor="w", padding=(8, 0, 8, 8))
         status_bar.pack(fill="x")
@@ -163,6 +171,18 @@ class PaletteEditorApp:
         )
         if selected:
             self.load_palette(Path(selected))
+
+    def _refresh_zoom_buttons(self) -> None:
+        for zoom, button in self.zoom_buttons.items():
+            button.configure(state="disabled" if zoom == self.scale else "normal")
+
+    def set_zoom(self, zoom: int) -> None:
+        if zoom not in (1, 2, 3, 4):
+            return
+        self.scale = zoom
+        self._refresh_zoom_buttons()
+        self.refresh_previews()
+        self.status_var.set(f"Zoom set to {zoom}x")
 
     def load_image(self, path: Path) -> None:
         try:
@@ -207,6 +227,8 @@ class PaletteEditorApp:
         self.palette_path = path.resolve()
         self.normal_palette = palette
         self.edited_palette = palette[:]
+        self.custom_palette = palette[:]
+        self.using_original = [False] * len(palette)
         self.status_var.set(f"Loaded normal.pal: {self.palette_path}")
 
         self._rebuild_palette_editors()
@@ -217,68 +239,230 @@ class PaletteEditorApp:
         for child in self.palette_frame.winfo_children():
             child.destroy()
 
-        self.palette_vars.clear()
-        self.palette_entries.clear()
+        self.hex_vars.clear()
+        self.r_vars.clear()
+        self.g_vars.clear()
+        self.b_vars.clear()
+        self.hex_entries.clear()
+        self.dec_entries.clear()
+        self.swatch_labels.clear()
+        self.toggle_buttons.clear()
 
         if not self.normal_palette:
             ttk.Label(self.palette_frame, text="Load normal.pal to edit colors").grid(row=0, column=0, sticky="w")
             return
 
-        ttk.Label(self.palette_frame, text="Idx", width=4).grid(row=0, column=0, sticky="w")
-        ttk.Label(self.palette_frame, text="Hex Color", width=12).grid(row=0, column=1, sticky="w")
-        ttk.Label(self.palette_frame, text="", width=10).grid(row=0, column=2, sticky="w")
+        self.palette_frame.columnconfigure(0, weight=1)
+        self.palette_frame.columnconfigure(1, weight=1)
 
-        for idx, rgb in enumerate(self.edited_palette):
-            ttk.Label(self.palette_frame, text=str(idx), width=4).grid(row=idx + 1, column=0, sticky="w", pady=1)
+        entries_per_col = max(8, (len(self.edited_palette) + 1) // 2)
 
-            var = tk.StringVar(value=rgb_to_hex(rgb))
-            var.trace_add("write", self._on_palette_text_changed)
-            entry = ttk.Entry(self.palette_frame, textvariable=var, width=12)
-            entry.grid(row=idx + 1, column=1, sticky="w", padx=(0, 6), pady=1)
+        for col in range(2):
+            col_frame = ttk.Frame(self.palette_frame)
+            col_frame.grid(row=0, column=col, sticky="nw", padx=(0, 18 if col == 0 else 0))
 
-            pick_btn = ttk.Button(self.palette_frame, text="Pick", command=lambda i=idx: self.pick_color(i))
-            pick_btn.grid(row=idx + 1, column=2, sticky="w", pady=1)
+            ttk.Label(col_frame, text="Idx", width=4).grid(row=0, column=0, sticky="w")
+            ttk.Label(col_frame, text="Hex", width=10).grid(row=0, column=1, sticky="w")
+            ttk.Label(col_frame, text="R", width=4).grid(row=0, column=2, sticky="w")
+            ttk.Label(col_frame, text="G", width=4).grid(row=0, column=3, sticky="w")
+            ttk.Label(col_frame, text="B", width=4).grid(row=0, column=4, sticky="w")
+            ttk.Label(col_frame, text="", width=2).grid(row=0, column=5, sticky="w")
+            ttk.Label(col_frame, text="", width=7).grid(row=0, column=6, sticky="w")
+            ttk.Label(col_frame, text="", width=6).grid(row=0, column=7, sticky="w")
 
-            self.palette_vars.append(var)
-            self.palette_entries.append(entry)
+            start = col * entries_per_col
+            end = min(start + entries_per_col, len(self.edited_palette))
+            for idx in range(start, end):
+                rgb = self.edited_palette[idx]
+                row = (idx - start) + 1
+
+                ttk.Label(col_frame, text=str(idx), width=4).grid(row=row, column=0, sticky="w", pady=2)
+
+                hex_var = tk.StringVar(value=rgb_to_hex(rgb))
+                hex_entry = ttk.Entry(col_frame, textvariable=hex_var, width=10)
+                hex_entry.grid(row=row, column=1, sticky="w", padx=(0, 6), pady=2)
+
+                r_var = tk.StringVar(value=str(rgb[0]))
+                g_var = tk.StringVar(value=str(rgb[1]))
+                b_var = tk.StringVar(value=str(rgb[2]))
+
+                r_entry = ttk.Entry(col_frame, textvariable=r_var, width=4)
+                g_entry = ttk.Entry(col_frame, textvariable=g_var, width=4)
+                b_entry = ttk.Entry(col_frame, textvariable=b_var, width=4)
+                r_entry.grid(row=row, column=2, sticky="w", padx=(0, 2), pady=2)
+                g_entry.grid(row=row, column=3, sticky="w", padx=(0, 2), pady=2)
+                b_entry.grid(row=row, column=4, sticky="w", padx=(0, 6), pady=2)
+
+                swatch = tk.Label(col_frame, width=2, relief="solid", borderwidth=1, bg=rgb_to_hex(rgb))
+                swatch.grid(row=row, column=5, sticky="w", padx=(0, 6), pady=2)
+
+                toggle_btn = ttk.Button(col_frame, text="Use Orig", command=lambda i=idx: self.toggle_original_color(i))
+                toggle_btn.grid(row=row, column=6, sticky="w", padx=(0, 6), pady=2)
+
+                pick_btn = ttk.Button(col_frame, text="Pick", command=lambda i=idx: self.pick_color(i))
+                pick_btn.grid(row=row, column=7, sticky="w", pady=2)
+
+                hex_var.trace_add("write", lambda *_args, i=idx: self._on_hex_changed(i))
+                r_var.trace_add("write", lambda *_args, i=idx: self._on_dec_changed(i))
+                g_var.trace_add("write", lambda *_args, i=idx: self._on_dec_changed(i))
+                b_var.trace_add("write", lambda *_args, i=idx: self._on_dec_changed(i))
+
+                self.hex_vars.append(hex_var)
+                self.r_vars.append(r_var)
+                self.g_vars.append(g_var)
+                self.b_vars.append(b_var)
+                self.hex_entries.append(hex_entry)
+                self.dec_entries.append((r_entry, g_entry, b_entry))
+                self.swatch_labels.append(swatch)
+                self.toggle_buttons.append(toggle_btn)
+
+            self._refresh_toggle_buttons()
 
     def pick_color(self, index: int) -> None:
-        if not (0 <= index < len(self.palette_vars)):
+        if not (0 <= index < len(self.hex_vars)):
             return
-        current = self.palette_vars[index].get()
+        current = self.hex_vars[index].get()
         initial = current if current.startswith("#") else f"#{current}"
         _rgb, hex_color = colorchooser.askcolor(color=initial, parent=self.root)
         if hex_color:
-            self.palette_vars[index].set(hex_color.upper())
+            self.hex_vars[index].set(hex_color.upper())
 
-    def _on_palette_text_changed(self, *_args: object) -> None:
+    def _set_row_invalid(self, index: int, invalid: bool) -> None:
+        style = "Invalid.TEntry" if invalid else "TEntry"
+        self.hex_entries[index].configure(style=style)
+        for entry in self.dec_entries[index]:
+            entry.configure(style=style)
+
+    def _on_hex_changed(self, index: int) -> None:
+        if self._syncing_fields:
+            return
+        if not (0 <= index < len(self.hex_vars)):
+            return
+
+        text = self.hex_vars[index].get().strip()
+        try:
+            rgb = hex_to_rgb(text)
+        except Exception:
+            self._set_row_invalid(index, True)
+            self.status_var.set(f"Invalid hex at index {index} (expected #RRGGBB)")
+            return
+
+        self._syncing_fields = True
+        try:
+            self.r_vars[index].set(str(rgb[0]))
+            self.g_vars[index].set(str(rgb[1]))
+            self.b_vars[index].set(str(rgb[2]))
+        finally:
+            self._syncing_fields = False
+
+        self._set_row_invalid(index, False)
+        self._schedule_apply()
+
+    def _on_dec_changed(self, index: int) -> None:
+        if self._syncing_fields:
+            return
+        if not (0 <= index < len(self.r_vars)):
+            return
+
+        try:
+            r = int(self.r_vars[index].get().strip())
+            g = int(self.g_vars[index].get().strip())
+            b = int(self.b_vars[index].get().strip())
+            if not (0 <= r <= 255 and 0 <= g <= 255 and 0 <= b <= 255):
+                raise ValueError
+        except Exception:
+            self._set_row_invalid(index, True)
+            self.status_var.set(f"Invalid RGB at index {index} (use 0-255)")
+            return
+
+        self._syncing_fields = True
+        try:
+            self.hex_vars[index].set(rgb_to_hex((r, g, b)))
+        finally:
+            self._syncing_fields = False
+
+        self._set_row_invalid(index, False)
+        self._schedule_apply()
+
+    def _schedule_apply(self) -> None:
         if self.update_after_id is not None:
             self.root.after_cancel(self.update_after_id)
         self.update_after_id = self.root.after(80, self._apply_palette_edits)
 
+    def _refresh_toggle_buttons(self) -> None:
+        for idx, btn in enumerate(self.toggle_buttons):
+            if idx < len(self.using_original) and self.using_original[idx]:
+                btn.configure(text="Use Edit")
+            else:
+                btn.configure(text="Use Orig")
+
+    def _set_row_values(self, index: int, rgb: RgbColor) -> None:
+        self._syncing_fields = True
+        try:
+            self.hex_vars[index].set(rgb_to_hex(rgb))
+            self.r_vars[index].set(str(rgb[0]))
+            self.g_vars[index].set(str(rgb[1]))
+            self.b_vars[index].set(str(rgb[2]))
+        finally:
+            self._syncing_fields = False
+        self._set_row_invalid(index, False)
+
+    def toggle_original_color(self, index: int) -> None:
+        if not (0 <= index < len(self.edited_palette)):
+            return
+        if not self.normal_palette or not self.custom_palette:
+            return
+
+        # Flip this slot between the preserved custom value and the original normal.pal entry.
+        if self.using_original[index]:
+            target = self.custom_palette[index]
+            self.using_original[index] = False
+        else:
+            self.custom_palette[index] = self.edited_palette[index]
+            target = self.normal_palette[index]
+            self.using_original[index] = True
+
+        self.edited_palette[index] = target
+        self._set_row_values(index, target)
+        self.swatch_labels[index].configure(bg=rgb_to_hex(target))
+        self._refresh_toggle_buttons()
+        self.status_var.set(f"Toggled index {index} to {'original' if self.using_original[index] else 'edited'} color")
+        self.refresh_previews()
+
     def _apply_palette_edits(self) -> None:
         self.update_after_id = None
-        if not self.palette_vars:
+        if not self.hex_vars:
             return
 
         next_palette: list[RgbColor] = []
         bad_indices: list[int] = []
 
-        for idx, var in enumerate(self.palette_vars):
-            text = var.get().strip()
+        for idx, hex_var in enumerate(self.hex_vars):
+            text = hex_var.get().strip()
             try:
                 rgb = hex_to_rgb(text)
                 next_palette.append(rgb)
-                self.palette_entries[idx].configure(style="TEntry")
+                self._set_row_invalid(idx, False)
+
+                if idx < len(self.using_original) and self.using_original[idx]:
+                    if rgb != self.normal_palette[idx]:
+                        self.using_original[idx] = False
+                        self.custom_palette[idx] = rgb
+                else:
+                    if idx < len(self.custom_palette):
+                        self.custom_palette[idx] = rgb
             except Exception:
                 bad_indices.append(idx)
-                self.palette_entries[idx].configure(style="Invalid.TEntry")
+                self._set_row_invalid(idx, True)
 
         if bad_indices:
             self.status_var.set(f"Invalid color at index(es): {', '.join(map(str, bad_indices))}")
             return
 
         self.edited_palette = next_palette
+        for idx, rgb in enumerate(self.edited_palette):
+            self.swatch_labels[idx].configure(bg=rgb_to_hex(rgb))
+        self._refresh_toggle_buttons()
         self.status_var.set("Palette updated")
         self.refresh_previews()
 
