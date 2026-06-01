@@ -89,7 +89,7 @@ static const struct LevelUpMove sEzephyraLevelUpLearnset[] = {
 
 static const struct LevelUpMove sCadelaideLevelUpLearnset[] = {
     LEVEL_UP_MOVE( 1, MOVE_SCRATCH),
-    LEVEL_UP_MOVE( 1, MOVE_LEER),
+    LEVEL_UP_MOVE( 1, MOVE_GROWL),
     LEVEL_UP_MOVE( 6, MOVE_QUICK_ATTACK),
     LEVEL_UP_MOVE( 9, MOVE_SHARPEN),
     LEVEL_UP_MOVE(12, MOVE_METAL_CLAW),
@@ -106,7 +106,7 @@ static const struct LevelUpMove sCadelaideLevelUpLearnset[] = {
 
 static const struct LevelUpMove sAdelaideLevelUpLearnset[] = {
     LEVEL_UP_MOVE( 1, MOVE_SCRATCH),
-    LEVEL_UP_MOVE( 1, MOVE_LEER),
+    LEVEL_UP_MOVE( 1, MOVE_GROWL),
     LEVEL_UP_MOVE( 6, MOVE_QUICK_ATTACK),
     LEVEL_UP_MOVE( 9, MOVE_SHARPEN),
     LEVEL_UP_MOVE(12, MOVE_METAL_CLAW),
@@ -123,7 +123,7 @@ static const struct LevelUpMove sAdelaideLevelUpLearnset[] = {
 
 static const struct LevelUpMove sEadelaideLevelUpLearnset[] = {
     LEVEL_UP_MOVE( 1, MOVE_SCRATCH),
-    LEVEL_UP_MOVE( 1, MOVE_LEER),
+    LEVEL_UP_MOVE( 1, MOVE_GROWL),
     LEVEL_UP_MOVE( 6, MOVE_QUICK_ATTACK),
     LEVEL_UP_MOVE( 9, MOVE_SHARPEN),
     LEVEL_UP_MOVE(12, MOVE_METAL_CLAW),
