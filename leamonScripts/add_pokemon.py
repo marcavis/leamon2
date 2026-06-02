@@ -65,7 +65,9 @@ def parse_definition(path: Path) -> dict:
     """Parse KEY = VALUE definition file. Returns a dict of uppercased keys."""
     data: dict = {}
     learnset_lines: list = []
+    evolution_lines: list = []
     in_learnset = False
+    in_evolutions = False
 
     with open(path, encoding="utf-8") as f:
         for raw_line in f:
@@ -74,12 +76,21 @@ def parse_definition(path: Path) -> dict:
                 continue
             if line.upper().rstrip(":") == "LEARNSET":
                 in_learnset = True
+                in_evolutions = False
+                continue
+            if line.upper().rstrip(":") == "EVOLUTIONS":
+                in_evolutions = True
+                in_learnset = False
                 continue
             if in_learnset:
                 # Strip inline comments
                 entry = line.split("#")[0].strip()
                 if entry:
                     learnset_lines.append(entry)
+            elif in_evolutions:
+                entry = line.split("#")[0].strip()
+                if entry:
+                    evolution_lines.append(entry)
             elif "=" in line:
                 key, _, value = line.partition("=")
                 key = key.strip().upper()
@@ -88,6 +99,7 @@ def parse_definition(path: Path) -> dict:
                     data[key] = value
 
     data["_LEARNSET_LINES"] = learnset_lines
+    data["_EVOLUTION_LINES"] = evolution_lines
     return data
 
 
@@ -337,6 +349,23 @@ def build_learnset_block(title: str, learnset_lines: list[str]) -> str:
     )
 
 
+def build_evolution_block(evolution_lines: list[str]) -> str:
+    entries = []
+    for line in evolution_lines:
+        entry = line.strip().rstrip(",")
+        if entry:
+            entries.append(entry)
+
+    if not entries:
+        return ""
+
+    if len(entries) == 1:
+        return f"        .evolutions = EVOLUTION({entries[0]}),\n"
+
+    joined = ",\n".join(f"                                {entry}" for entry in entries)
+    return f"        .evolutions = EVOLUTION({joined}),\n"
+
+
 def build_species_entry(data: dict, upper: str, title: str, graphics_title: str) -> str:
     # ── Build types ──────────────────────────────────────────────────────────
     t1 = data["TYPE1"]
@@ -420,6 +449,8 @@ def build_species_entry(data: dict, upper: str, title: str, graphics_title: str)
     if not description_lines:
         raise ValueError("Could not find any DESCRIPTION_n fields in definition file")
 
+    evolution_block = build_evolution_block(data.get("_EVOLUTION_LINES", []))
+
     description_str = "\n".join(
         f'{tab}{tab}{tab}"{line}\\n"' if index < len(description_lines) - 1 else f'{tab}{tab}{tab}"{line}"'
         for index, line in enumerate(description_lines)
@@ -471,7 +502,7 @@ def build_species_entry(data: dict, upper: str, title: str, graphics_title: str)
 {shadow_line}{tab}{tab}FOOTPRINT({graphics_title})
 {tab}{tab}.levelUpLearnset = s{title}LevelUpLearnset,
 {tab}{tab}.teachableLearnset = sNoneTeachableLearnset,
-{tab}}},
+{evolution_block}{tab}}},
 """
 
 
@@ -845,7 +876,7 @@ def main() -> None:
         print(f"Done! SPECIES_{upper} has been added to all source files.")
         print("Reminders:")
         print("  • Add a cry:        see docs tutorial section 5.")
-        print("  • Add evolutions:   edit .evolutions field in species_info.h manually.")
+        print("  • Evolutions:       include an EVOLUTIONS: section in the definition file if needed.")
         print("  • Wild encounters:  edit src/data/wild_encounters.json.")
         print("  • Overworld sprite: see docs tutorial Optional section 4.")
 

@@ -140,6 +140,35 @@ def format_move_name(value: str) -> str:
     return f"MOVE_{sanitize_identifier(value).upper()}"
 
 
+def format_evolution_method(value: str) -> str:
+    cleaned = normalize_text(value)
+    if not cleaned:
+        raise ValueError("Evolution method cannot be blank")
+    if cleaned.startswith("EVO_"):
+        return cleaned
+    return f"EVO_{sanitize_identifier(cleaned).upper()}"
+
+
+def format_evolution_arg(value: str) -> str:
+    cleaned = normalize_text(value)
+    if not cleaned:
+        return "0"
+    if re.fullmatch(r"-?\d+", cleaned):
+        return cleaned
+    if cleaned.startswith(("ITEM_", "TYPE_", "MAP_", "REGION_", "TIME_", "SPECIES_", "MOVE_")):
+        return cleaned
+    return sanitize_constant(cleaned, "ITEM_")
+
+
+def format_evolution_target(value: str) -> str:
+    cleaned = normalize_text(value)
+    if not cleaned:
+        raise ValueError("Evolution target cannot be blank")
+    if cleaned.startswith("SPECIES_"):
+        return cleaned
+    return sanitize_constant(cleaned, "SPECIES_")
+
+
 def format_shadow_size(value: str, fallback: str = "SHADOW_SIZE_M") -> str:
     cleaned = normalize_text(value)
     if not cleaned:
@@ -154,11 +183,34 @@ def split_description(raw_parts: list[str]) -> list[str]:
     return parts[:4]
 
 
+def parse_evolutions(rows: list[list[str]], species_name: str) -> list[str]:
+    wanted = species_name.casefold()
+    matches = [row for row in rows if row and row[0].strip().casefold() == wanted]
+    if not matches:
+        return []
+    if len(matches) > 1:
+        raise ValueError(f"Multiple evolution rows matched species {species_name!r}")
+
+    row = matches[0]
+    evolution_lines: list[str] = []
+    for index in range(1, len(row), 3):
+        method = row[index].strip() if index < len(row) else ""
+        arg = row[index + 1].strip() if index + 1 < len(row) else ""
+        target = row[index + 2].strip() if index + 2 < len(row) else ""
+        if not method or not target:
+            continue
+        evolution_lines.append(
+            f"{{{format_evolution_method(method)}, {format_evolution_arg(arg)}, {format_evolution_target(target)}}}"
+        )
+    return evolution_lines
+
+
 def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> tuple[str, str]:
     stats = sheet_row_by_species(sheets["Stats"], species_name)
     pokedex = sheet_row_by_species(sheets["Pokedex"], species_name)
     images = sheet_row_by_species(sheets["Images"], species_name)
     learn_rows = sheets["Learnset"]
+    evolution_rows = sheets.get("Evo", [])
 
     # Learnset rows are stored as paired rows: levels row followed by move names row.
     learnset_levels: list[str] | None = None
@@ -173,6 +225,8 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
         raise KeyError(f"Could not find paired learnset rows for {species_name!r}")
 
     defaults = parse_defaults(sheets.get("Defaults", []))
+
+    file_name = sanitize_identifier(species_name).lower()
 
     stats_map = {
         "BASE_HP": stats[1],
@@ -232,11 +286,12 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
     }
 
     display_name = normalize_text(pokedex[1]) if len(pokedex) > 1 and normalize_text(pokedex[1]) else species_name
-    file_name = sanitize_identifier(species_name).lower()
 
     description_lines = split_description(pokedex[2:6])
     if not description_lines:
         description_lines = ["TODO: Pokedex description"]
+
+    evolution_lines = parse_evolutions(evolution_rows, species_name)
 
     learnset_lines: list[str] = []
     for level, move in zip(learnset_levels[2:], learnset_moves[2:]):
@@ -331,6 +386,12 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
     out.append("")
     out.append(f"ICON_PAL_INDEX = {image_map['ICON_PAL_INDEX'] or '0'}")
     out.append("")
+
+    if evolution_lines:
+        out.append("EVOLUTIONS:")
+        out.extend(evolution_lines)
+        out.append("")
+
     out.append("LEARNSET:")
     out.extend(learnset_lines)
     out.append("")
