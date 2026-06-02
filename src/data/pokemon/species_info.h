@@ -589,6 +589,7 @@ const struct SpeciesInfo gSpeciesInfo[] =
         FOOTPRINT(Adelaide)
         .levelUpLearnset = sAdelaideLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
+        .evolutions = EVOLUTION({EVO_LEVEL, 32, SPECIES_EADELAIDE}),
     },
 
     [SPECIES_EADELAIDE] =
