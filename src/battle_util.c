@@ -4336,13 +4336,12 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
              && IsBattlerTurnDamaged(gBattlerTarget, EXCLUDING_SUBSTITUTES)
              && !IsMoveEffectBlockedByTarget(GetBattlerAbility(gBattlerTarget))
              && IsMoveMakingContact(gBattlerAttacker, gBattlerTarget, GetBattlerAbility(gBattlerAttacker), GetBattlerHoldEffect(gBattlerAttacker), move)
-             && RandomPercentage(RNG_GLAD_HANDING, 30))
+             && CompareStat(gBattlerTarget, STAT_SPATK, MIN_STAT_STAGE, CMP_GREATER_THAN, gLastUsedAbility)
+             && RandomPercentage(RNG_GLAD_HANDING, 98))
             {
-                gEffectBattler = gBattlerTarget;
-                gBattleScripting.battler = gBattlerAttacker;
-                gBattleScripting.moveEffect = MOVE_EFFECT_SP_ATK_MINUS_1;
-                PREPARE_ABILITY_BUFFER(gBattleTextBuff1, gLastUsedAbility);
-                BattleScriptCall(BattleScript_AbilityStatusEffect);
+                gEffectBattler = gBattlerAbility = gBattlerAttacker;
+                SetStatChange(gBattlerTarget, STAT_SPATK, -1);
+                BattleScriptCall(BattleScript_AbilityStatChange);
                 effect++;
             }
             break;
