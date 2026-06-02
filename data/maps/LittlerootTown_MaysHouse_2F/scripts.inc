@@ -280,6 +280,8 @@ RivalsHouse_2F_EventScript_BrendanWhereShouldIGoNext::
 	return
 
 LittlerootTown_MaysHouse_2F_EventScript_PC::
+	//TODO: remove this later!
+	additem ITEM_RARE_CANDY, 10
 	lockall
 	checkplayergender
 	goto_if_eq VAR_RESULT, MALE, LittlerootTown_MaysHouse_2F_EventScript_CheckRivalsPC

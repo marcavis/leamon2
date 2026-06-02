@@ -234,6 +234,8 @@ LittlerootTown_BrendansHouse_2F_Movement_PlayerWatchBrendanEast:
 	step_end
 
 LittlerootTown_BrendansHouse_2F_EventScript_PC::
+	//TODO: remove this later!
+	additem ITEM_RARE_CANDY, 10
 	lockall
 	checkplayergender
 	goto_if_eq VAR_RESULT, MALE, LittlerootTown_BrendansHouse_2F_EventScript_CheckPlayersPC
