@@ -13,7 +13,6 @@ What this script edits
   4. src/data/pokemon/level_up_learnsets/leamon_learnsets.h  — level-up moveset
   5. src/data/pokemon/species_info.h        — full [SPECIES_<NAME>] entry in gSpeciesInfo[]
   6. src/data/pokemon/pokedex_orders.h      — alphabetical, weight, height ordering arrays
-  7. src/pokemon.c                          — HOENN_TO_NATIONAL(<NAME>) entry
 
 The script refuses to run (with clear error messages) unless:
   • The graphics folder graphics/pokemon/<name>/ exists and contains all required files.
@@ -778,19 +777,6 @@ def edit_pokedex_orders_h(data: dict, upper: str, dry_run: bool = False) -> None
     print(f"  {status} src/data/pokemon/pokedex_orders.h     {entry} (Alphabetical / Weight / Height)")
 
 
-def edit_pokemon_c(upper: str, dry_run: bool = False) -> None:
-    path = REPO_ROOT / "src" / "pokemon.c"
-    content = read_file(path)
-
-    # Find sHoennToNationalOrder array and insert before its closing };
-    array_decl = "sHoennToNationalOrder["
-    content = insert_before_closing_brace(content, array_decl, f"HOENN_TO_NATIONAL({upper})")
-
-    write_file(path, content, dry_run)
-    status = "[DRY-RUN]" if dry_run else "[OK]"
-    print(f"  {status} src/pokemon.c                         HOENN_TO_NATIONAL({upper})")
-
-
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -868,7 +854,6 @@ def main() -> None:
             (edit_learnsets_h,     (upper, title, data["_LEARNSET_LINES"], args.dry_run), "leamon_learnsets.h"),
             (edit_species_info_h,  (data, upper, title, graphics_title, args.dry_run), "src/data/pokemon/species_info.h"),
             (edit_pokedex_orders_h,(data, upper, args.dry_run),                      "src/data/pokemon/pokedex_orders.h"),
-            (edit_pokemon_c,       (upper, args.dry_run),                            "src/pokemon.c"),
         ]
 
     for fn, fn_args, desc in tasks:
