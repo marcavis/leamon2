@@ -37,7 +37,13 @@ TEMPLATE_PATH = REPO_ROOT / "leamonScripts" / "data" / "_template.txt"
 OUTPUT_DIR = REPO_ROOT / "leamonScripts" / "data"
 GOOGLE_SHEET_CONFIG_PATH = REPO_ROOT / "leamonScripts" / ".mondata_to_txt.google_sheet_url"
 DEFAULT_GOOGLE_SHEET_NAMES = ["Stats", "Pokedex", "Images", "Learnset", "Evo", "Defaults"]
-SHEETS_WITH_METADATA_ROW = {"Stats", "Pokedex", "Images", "Learnset", "Evo"}
+SHEET_HEADER_MARKERS: dict[str, tuple[str, ...]] = {
+    "Stats": ("species", "type1", "type2"),
+    "Pokedex": ("species", "pokedexheight", "pokemonscale"),
+    "Images": ("imagefolder", "frontspritesize", "backspritesize"),
+    "Learnset": ("species", "lvmove1 move1"),
+    "Evo": ("method1", "target"),
+}
 
 NS = {
     "table": "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
@@ -96,10 +102,21 @@ def load_workbook(path: Path) -> dict[str, list[list[str]]]:
                 row = expand_row(row_elem)
                 for _ in range(repeat):
                     rows.append(row[:])
-            if sheet_name in SHEETS_WITH_METADATA_ROW and rows:
-                rows = rows[1:]
+            rows = normalize_sheet_rows(sheet_name, rows)
             sheets[sheet_name] = rows
     return sheets
+
+
+def normalize_sheet_rows(sheet_name: str, rows: list[list[str]]) -> list[list[str]]:
+    markers = SHEET_HEADER_MARKERS.get(sheet_name)
+    if not markers or not rows:
+        return rows
+
+    for idx, row in enumerate(rows[:5]):
+        sample = " ".join(normalize_text(cell) for cell in row if normalize_text(cell)).casefold()
+        if sample and all(marker in sample for marker in markers):
+            return rows[idx:]
+    return rows
 
 
 def parse_google_sheet_id(value: str) -> str:
@@ -175,11 +192,6 @@ def load_google_sheets(spreadsheet_id_or_url: str, sheet_names: list[str] | None
                 f"Downloaded sheet {sheet_name!r}, but the content does not look like that tab. "
                 "Check tab names in Google Sheets and ensure the workbook URL/ID is correct."
             )
-
-    def normalize_sheet_rows(sheet_name: str, rows: list[list[str]]) -> list[list[str]]:
-        if sheet_name in SHEETS_WITH_METADATA_ROW and rows:
-            return rows[1:]
-        return rows
 
     for sheet_name in names:
         query = urllib.parse.urlencode({"tqx": "out:csv", "sheet": sheet_name})
@@ -434,10 +446,10 @@ def build_definition(
         "CATEGORY_NAME": get_pokedex_cell("category(max11chars)", 6),
         "HEIGHT": get_pokedex_cell("pokedexHeight", 8),
         "WEIGHT": get_pokedex_cell("pokedexWeight", 9),
-        "POKEMON_SCALE": get_pokedex_cell("pokemonScale", 9),
-        "POKEMON_OFFSET": get_pokedex_cell("pokemonOffset", 10),
-        "TRAINER_SCALE": get_pokedex_cell("trainerScale", 11),
-        "TRAINER_OFFSET": get_pokedex_cell("trainerOffset", 12),
+        "POKEMON_SCALE": get_pokedex_cell("pokemonScale", 10),
+        "POKEMON_OFFSET": get_pokedex_cell("pokemonOffset", 11),
+        "TRAINER_SCALE": get_pokedex_cell("trainerScale", 12),
+        "TRAINER_OFFSET": get_pokedex_cell("trainerOffset", 13),
         "BODY_COLOR": get_pokedex_cell("color", 14),
         "NO_FLIP": get_pokedex_cell("noflip", 15),
     }
