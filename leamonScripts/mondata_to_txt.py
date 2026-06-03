@@ -207,10 +207,26 @@ def parse_evolutions(rows: list[list[str]], species_name: str) -> list[str]:
 
 def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> tuple[str, str]:
     stats = sheet_row_by_species(sheets["Stats"], species_name)
-    pokedex = sheet_row_by_species(sheets["Pokedex"], species_name)
+    pokedex_rows = sheets["Pokedex"]
+    pokedex = sheet_row_by_species(pokedex_rows, species_name)
     images = sheet_row_by_species(sheets["Images"], species_name)
     learn_rows = sheets["Learnset"]
     evolution_rows = sheets.get("Evo", [])
+
+    pokedex_header = pokedex_rows[1] if len(pokedex_rows) > 1 else []
+    pokedex_header_map: dict[str, int] = {}
+    for idx, value in enumerate(pokedex_header):
+        key = normalize_text(value).casefold()
+        if key:
+            pokedex_header_map[key] = idx
+
+    def get_pokedex_cell(header_name: str, fallback_index: int) -> str:
+        header_index = pokedex_header_map.get(header_name.casefold())
+        if header_index is not None and header_index < len(pokedex):
+            return pokedex[header_index]
+        if fallback_index < len(pokedex):
+            return pokedex[fallback_index]
+        return ""
 
     # Learnset rows are stored as paired rows: levels row followed by move names row.
     learnset_levels: list[str] | None = None
@@ -260,15 +276,15 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
     }
 
     pokedex_map = {
-        "CATEGORY_NAME": pokedex[6],
-        "HEIGHT": pokedex[7],
-        "WEIGHT": pokedex[8],
-        "POKEMON_SCALE": pokedex[9],
-        "POKEMON_OFFSET": pokedex[10],
-        "TRAINER_SCALE": pokedex[11],
-        "TRAINER_OFFSET": pokedex[12],
-        "BODY_COLOR": pokedex[13],
-        "NO_FLIP": pokedex[14],
+        "CATEGORY_NAME": get_pokedex_cell("category(max11chars)", 6),
+        "HEIGHT": get_pokedex_cell("pokedexHeight", 7),
+        "WEIGHT": get_pokedex_cell("pokedexWeight", 8),
+        "POKEMON_SCALE": get_pokedex_cell("pokemonScale", 9),
+        "POKEMON_OFFSET": get_pokedex_cell("pokemonOffset", 10),
+        "TRAINER_SCALE": get_pokedex_cell("trainerScale", 11),
+        "TRAINER_OFFSET": get_pokedex_cell("trainerOffset", 12),
+        "BODY_COLOR": get_pokedex_cell("color", 13),
+        "NO_FLIP": get_pokedex_cell("noflip", 14),
     }
 
     image_map = {
@@ -285,9 +301,15 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
         "ICON_PAL_INDEX": images[4] if len(images) > 4 and images[4].strip() else "0",
     }
 
-    display_name = normalize_text(pokedex[1]) if len(pokedex) > 1 and normalize_text(pokedex[1]) else species_name
+    display_name_raw = get_pokedex_cell("name", 1)
+    display_name = normalize_text(display_name_raw) if normalize_text(display_name_raw) else species_name
 
-    description_lines = split_description(pokedex[2:6])
+    description_lines = split_description([
+        get_pokedex_cell("pkdx1", 2),
+        get_pokedex_cell("pkdx2", 3),
+        get_pokedex_cell("pkdx3", 4),
+        get_pokedex_cell("pkdx4", 5),
+    ])
     if not description_lines:
         description_lines = ["TODO: Pokedex description"]
 
