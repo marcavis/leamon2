@@ -643,6 +643,58 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .levelUpLearnset = sEadelaideLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
     },
+
+    [SPECIES_GEMMA] =
+    {
+        .baseHP        = 50,
+        .baseAttack    = 70,
+        .baseDefense   = 90,
+        .baseSpeed     = 50,
+        .baseSpAttack  = 50,
+        .baseSpDefense = 60,
+        .types = MON_TYPES(TYPE_ROCK),
+        .catchRate = 180,
+        .expYield = 120,
+        .evYield_Defense = 2,
+        .genderRatio = PERCENT_FEMALE(25),
+        .eggCycles = 20,
+        .friendship = STANDARD_FRIENDSHIP,
+        .growthRate = GROWTH_MEDIUM_SLOW,
+        .eggGroups = MON_EGG_GROUPS(EGG_GROUP_HUMAN_LIKE),
+        .abilities = { ABILITY_AMULET_LINK, ABILITY_HIGH_MOHS, ABILITY_NONE },
+        .bodyColor = BODY_COLOR_0,
+        .speciesName = _("Gemma"),
+        .cryId = CRY_NONE,
+        .natDexNum = NATIONAL_DEX_GEMMA,
+        .categoryName = _("Crystal Fox"),
+        .height = 15,
+        .weight = 800,
+        .description = COMPOUND_STRING(
+            "Has trouble showing expressions."),
+        .pokemonScale = 800,
+        .pokemonOffset = 256,
+        .trainerScale = 0,
+        .trainerOffset = 256,
+        .frontPic = gMonFrontPic_Gemma,
+        .frontPicSize = MON_COORDS_SIZE(64, 64),
+        .frontPicYOffset = 0,
+        .frontAnimFrames = ANIM_FRAMES(
+            ANIMCMD_FRAME(0,1),
+        ),
+        .backPic = gMonBackPic_Gemma,
+        .backPicSize = MON_COORDS_SIZE(64, 64),
+        .backPicYOffset = 0,
+        .backAnimId = BACK_ANIM_H_VIBRATE,
+        .palette = gMonPalette_Gemma,
+        .shinyPalette = gMonShinyPalette_Gemma,
+        .iconSprite = gMonIcon_Gemma,
+        .iconPalIndex = 0,
+        SHADOW(2, 16, SHADOW_SIZE_M)
+        FOOTPRINT(Gemma)
+        .levelUpLearnset = sGemmaLevelUpLearnset,
+        .teachableLearnset = sNoneTeachableLearnset,
+        .evolutions = EVOLUTION({EVO_LEVEL, 28, SPECIES_EGEMMA}),
+    },
     /* You may add any custom species below this point based on the following structure: */
 
     /*

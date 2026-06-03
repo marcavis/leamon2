@@ -1060,6 +1060,8 @@ const u16 gPokedexOrder_Alphabetical[] =
     NATIONAL_DEX_CADELAIDE,
     NATIONAL_DEX_ADELAIDE,
     NATIONAL_DEX_EADELAIDE,
+    NATIONAL_DEX_GEMMA,
+    NATIONAL_DEX_GEMMA,
 };
 
 const u16 gPokedexOrder_Weight[] =
@@ -2950,6 +2952,8 @@ const u16 gPokedexOrder_Weight[] =
     // 2204.4 lbs / 999.9 kg
     NATIONAL_DEX_COSMOEM,
     NATIONAL_DEX_CELESTEELA,
+ NATIONAL_DEX_GEMMA,
+ NATIONAL_DEX_GEMMA,
 };
 
 const u16 gPokedexOrder_Height[] =
@@ -3857,6 +3861,8 @@ const u16 gPokedexOrder_Height[] =
     NATIONAL_DEX_FEZANDIPITI,
     // 4'11" / 1.5m
     NATIONAL_DEX_YURIA,
+ NATIONAL_DEX_GEMMA,
+ NATIONAL_DEX_GEMMA,
  NATIONAL_DEX_EADELAIDE,
  NATIONAL_DEX_ADELAIDE,
  NATIONAL_DEX_CADELAIDE,

@@ -137,3 +137,17 @@ static const struct LevelUpMove sEadelaideLevelUpLearnset[] = {
     LEVEL_UP_MOVE(54, MOVE_METEOR_MASH),
     LEVEL_UP_END
 };
+
+static const struct LevelUpMove sGemmaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_MOVE(20, MOVE_STONE_EDGE),
+    LEVEL_UP_MOVE(30, MOVE_CRYSTAL_TOMB),
+    LEVEL_UP_END
+};
+
+static const struct LevelUpMove sGemmaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_MOVE(20, MOVE_STONE_EDGE),
+    LEVEL_UP_MOVE(30, MOVE_CRYSTAL_TOMB),
+    LEVEL_UP_END
+};

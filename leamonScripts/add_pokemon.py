@@ -192,10 +192,12 @@ def check_required_fields(data: dict) -> bool:
 
 
 def species_exists(upper: str) -> bool:
-    """Return True if a whole SPECIES_<upper> define already exists in species.h."""
+    """Return True if SPECIES_<upper> exists in species.h (define or enum entry)."""
     species_h = REPO_ROOT / "include" / "constants" / "species.h"
     content = species_h.read_text(encoding="utf-8")
-    return re.search(rf"^\s*#define\s+SPECIES_{re.escape(upper)}\b", content, re.MULTILINE) is not None
+    define_match = re.search(rf"^\s*#define\s+SPECIES_{re.escape(upper)}\b", content, re.MULTILINE)
+    enum_match = re.search(rf"^\s*SPECIES_{re.escape(upper)}\s*(?:=|,)", content, re.MULTILINE)
+    return define_match is not None or enum_match is not None
 
 
 # ─── File helpers ─────────────────────────────────────────────────────────────
@@ -512,10 +514,31 @@ def edit_species_h(name: str, upper: str, dry_run: bool = False) -> None:
     path = REPO_ROOT / "include" / "constants" / "species.h"
     content = read_file(path)
 
+    custom_end_anchor = "    SPECIES_CUSTOM_END,"
+    custom_block_markers = ("SPECIES_CUSTOM_START", "SPECIES_CUSTOM_END")
+    uses_custom_block = all(marker in content for marker in custom_block_markers)
+
+    if uses_custom_block:
+        if custom_end_anchor not in content:
+            raise ValueError(
+                "Detected SPECIES_CUSTOM_START/SPECIES_CUSTOM_END in include/constants/species.h, "
+                "but could not find the SPECIES_CUSTOM_END enum entry line."
+            )
+
+        new_entry = f"    SPECIES_{upper},\n"
+        content = insert_before_anchor(content, custom_end_anchor, new_entry)
+
+        write_file(path, content, dry_run)
+        status = "[DRY-RUN]" if dry_run else "[OK]"
+        print(f"  {status} include/constants/species.h           SPECIES_{upper} (custom enum block)")
+        return
+
     anchor = "//Leamon species end here"
     if anchor not in content:
-        raise ValueError(f"Anchor '{anchor}' not found in include/constants/species.h.\n"
-                         "  The file may have an unexpected structure.")
+        raise ValueError(
+            f"Anchor '{anchor}' not found in include/constants/species.h.\n"
+            "  Expected either the legacy anchor or SPECIES_CUSTOM_START/SPECIES_CUSTOM_END block."
+        )
 
     # Find the highest existing Leamon species number
     leamon_section = content[:content.find(anchor)]
