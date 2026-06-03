@@ -141,9 +141,41 @@ def load_google_sheets(spreadsheet_id_or_url: str, sheet_names: list[str] | None
     names = sheet_names if sheet_names is not None else DEFAULT_GOOGLE_SHEET_NAMES
     sheets: dict[str, list[list[str]]] = {}
 
+    expected_markers: dict[str, tuple[str, ...]] = {
+        "Stats": ("base stats", "ability", "evyield"),
+        "Pokedex": ("pokedex", "category(max11chars)", "pokedexheight"),
+        "Images": ("imagefolder", "frontspritesize", "backspritesize"),
+        "Learnset": ("lvmove1 move1", "species", "move"),
+        "Evo": ("method1", "target", "species"),
+        "Defaults": ("animate", "exp types", "backspritesize"),
+    }
+
+    def validate_sheet_rows(sheet_name: str, rows: list[list[str]]) -> None:
+        if not rows:
+            raise RuntimeError(
+                f"Downloaded sheet {sheet_name!r} but it returned no rows. "
+                "Verify the tab exists and is publicly readable."
+            )
+
+        markers = expected_markers.get(sheet_name)
+        if not markers:
+            return
+
+        sample_lines: list[str] = []
+        for row in rows[:4]:
+            if row:
+                sample_lines.append(" ".join(normalize_text(cell) for cell in row if normalize_text(cell)))
+        sample = normalize_text(" ".join(sample_lines)).casefold()
+
+        if not any(marker in sample for marker in markers):
+            raise RuntimeError(
+                f"Downloaded sheet {sheet_name!r}, but the content does not look like that tab. "
+                "Check tab names in Google Sheets and ensure the workbook URL/ID is correct."
+            )
+
     for sheet_name in names:
-        query = urllib.parse.urlencode({"format": "csv", "sheet": sheet_name})
-        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?{query}"
+        query = urllib.parse.urlencode({"tqx": "out:csv", "sheet": sheet_name})
+        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?{query}"
         try:
             with urllib.request.urlopen(url, timeout=20) as response:
                 payload = response.read().decode("utf-8-sig")
@@ -159,6 +191,7 @@ def load_google_sheets(spreadsheet_id_or_url: str, sheet_names: list[str] | None
 
         reader = csv.reader(io.StringIO(payload))
         rows = [[normalize_text(cell) for cell in row] for row in reader]
+        validate_sheet_rows(sheet_name, rows)
         sheets[sheet_name] = rows
 
     return sheets
@@ -216,6 +249,13 @@ def format_gender_ratio(value: str, fallback: str = "50") -> str:
 
 def format_move_name(value: str) -> str:
     return f"MOVE_{sanitize_identifier(value).upper()}"
+
+
+def format_learnset_level(value: str) -> str:
+    cleaned = normalize_text(value)
+    if re.fullmatch(r"\d+,\d+", cleaned):
+        return cleaned.replace(",", ".")
+    return cleaned
 
 
 def format_evolution_method(value: str) -> str:
@@ -310,7 +350,8 @@ def build_definition(
             return pokedex[fallback_index]
         return ""
 
-    # Learnset rows are stored as paired rows: levels row followed by move names row.
+    # Learnset is usually stored as paired rows: levels row followed by move names row.
+    # Some sources collapse level+move into a single cell; we support both layouts.
     learnset_levels: list[str] | None = None
     learnset_moves: list[str] | None = None
     wanted = species_name.casefold()
@@ -319,8 +360,31 @@ def build_definition(
             learnset_levels = learn_rows[index]
             learnset_moves = learn_rows[index + 1]
             break
-    if learnset_levels is None or learnset_moves is None:
-        raise KeyError(f"Could not find paired learnset rows for {species_name!r}")
+
+    learnset_lines: list[str] = []
+    if learnset_levels is not None and learnset_moves is not None:
+        for level, move in zip(learnset_levels[1:], learnset_moves[1:]):
+            if not level.strip() or not move.strip():
+                continue
+            learnset_lines.append(f"{format_learnset_level(level)},{format_move_name(move)}")
+
+    if not learnset_lines:
+        single_rows = [row for row in learn_rows if row and row[0].strip().casefold() == wanted]
+        for row in single_rows:
+            for cell in row[1:]:
+                entry = normalize_text(cell)
+                if not entry:
+                    continue
+                parts = [part.strip() for part in re.split(r"\s*,\s*|\s+", entry, maxsplit=1) if part.strip()]
+                if len(parts) != 2:
+                    continue
+                level, move = parts
+                learnset_lines.append(f"{format_learnset_level(level)},{format_move_name(move)}")
+
+    if not learnset_lines:
+        if learnset_levels is None or learnset_moves is None:
+            raise KeyError(f"Could not find paired learnset rows for {species_name!r}")
+        raise ValueError(f"No learnset moves found for {species_name!r}")
 
     defaults = parse_defaults(sheets.get("Defaults", []))
 
@@ -396,14 +460,6 @@ def build_definition(
         description_lines = ["TODO: Pokedex description"]
 
     evolution_lines = parse_evolutions(evolution_rows, species_name)
-
-    learnset_lines: list[str] = []
-    for level, move in zip(learnset_levels[2:], learnset_moves[2:]):
-        if not level.strip() or not move.strip():
-            continue
-        learnset_lines.append(f"{level.strip()},{format_move_name(move)}")
-    if not learnset_lines:
-        raise ValueError(f"No learnset moves found for {species_name!r}")
 
     def add_line(lines: list[str], key: str, value: str, *, allow_blank: bool = False) -> None:
         if value or allow_blank:
