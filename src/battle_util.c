@@ -4337,7 +4337,7 @@ u32 AbilityBattleEffects(enum AbilityEffect caseID, enum BattlerId battler, enum
              && !IsMoveEffectBlockedByTarget(GetBattlerAbility(gBattlerTarget))
              && IsMoveMakingContact(gBattlerAttacker, gBattlerTarget, GetBattlerAbility(gBattlerAttacker), GetBattlerHoldEffect(gBattlerAttacker), move)
              && CompareStat(gBattlerTarget, STAT_SPATK, MIN_STAT_STAGE, CMP_GREATER_THAN, gLastUsedAbility)
-             && RandomPercentage(RNG_GLAD_HANDING, 98))
+             && RandomPercentage(RNG_GLAD_HANDING, 10))
             {
                 gEffectBattler = gBattlerAbility = gBattlerAttacker;
                 SetStatChange(gBattlerTarget, STAT_SPATK, -1);
