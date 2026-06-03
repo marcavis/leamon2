@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import tkinter as tk
+import time
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, ttk
 
@@ -99,6 +100,12 @@ class PaletteEditorApp:
         self.dec_entries: list[tuple[ttk.Entry, ttk.Entry, ttk.Entry]] = []
         self.swatch_labels: list[tk.Label] = []
         self.toggle_buttons: list[ttk.Button] = []
+        self.entry_to_index: dict[tk.Widget, int] = {}
+        self.active_edit_index: int | None = None
+        self.glow_active_color_var = tk.BooleanVar(value=True)
+        self.glow_anim_after_id: str | None = None
+        self.glow_cycle_seconds = 1.0
+        self.glow_tick_ms = 50
         self.update_after_id: str | None = None
         self.zoom_buttons: dict[int, ttk.Button] = {}
         self._syncing_fields = False
@@ -130,6 +137,13 @@ class PaletteEditorApp:
             btn.pack(side="left", padx=(0, 2))
             self.zoom_buttons[zoom] = btn
         self._refresh_zoom_buttons()
+
+        ttk.Checkbutton(
+            toolbar,
+            text="Glow edited color in Original",
+            variable=self.glow_active_color_var,
+            command=self._on_glow_checkbox_toggled,
+        ).pack(side="left", padx=(14, 0))
 
         previews = ttk.Frame(self.root, padding=(8, 4, 8, 8))
         previews.pack(fill="both", expand=True)
@@ -301,6 +315,8 @@ class PaletteEditorApp:
         self.dec_entries.clear()
         self.swatch_labels.clear()
         self.toggle_buttons.clear()
+        self.entry_to_index.clear()
+        self.active_edit_index = None
 
         if not self.normal_palette:
             ttk.Label(self.palette_frame, text="Load normal.pal to edit colors").grid(row=0, column=0, sticky="w")
@@ -347,6 +363,15 @@ class PaletteEditorApp:
                 g_entry.grid(row=row, column=3, sticky="w", padx=(0, 2), pady=2)
                 b_entry.grid(row=row, column=4, sticky="w", padx=(0, 6), pady=2)
 
+                hex_entry.bind("<FocusIn>", lambda _event, i=idx: self._on_entry_focus_in(i))
+                r_entry.bind("<FocusIn>", lambda _event, i=idx: self._on_entry_focus_in(i))
+                g_entry.bind("<FocusIn>", lambda _event, i=idx: self._on_entry_focus_in(i))
+                b_entry.bind("<FocusIn>", lambda _event, i=idx: self._on_entry_focus_in(i))
+                hex_entry.bind("<FocusOut>", self._on_entry_focus_out)
+                r_entry.bind("<FocusOut>", self._on_entry_focus_out)
+                g_entry.bind("<FocusOut>", self._on_entry_focus_out)
+                b_entry.bind("<FocusOut>", self._on_entry_focus_out)
+
                 swatch = tk.Label(col_frame, width=2, relief="solid", borderwidth=1, bg=rgb_to_hex(rgb))
                 swatch.grid(row=row, column=5, sticky="w", padx=(0, 6), pady=2)
 
@@ -369,17 +394,104 @@ class PaletteEditorApp:
                 self.dec_entries.append((r_entry, g_entry, b_entry))
                 self.swatch_labels.append(swatch)
                 self.toggle_buttons.append(toggle_btn)
+                self.entry_to_index[hex_entry] = idx
+                self.entry_to_index[r_entry] = idx
+                self.entry_to_index[g_entry] = idx
+                self.entry_to_index[b_entry] = idx
 
             self._refresh_toggle_buttons()
 
     def pick_color(self, index: int) -> None:
         if not (0 <= index < len(self.hex_vars)):
             return
+        self._set_active_edit_index(index)
         current = self.hex_vars[index].get()
         initial = current if current.startswith("#") else f"#{current}"
         _rgb, hex_color = colorchooser.askcolor(color=initial, parent=self.root)
         if hex_color:
             self.hex_vars[index].set(hex_color.upper())
+
+    def _on_entry_focus_in(self, index: int) -> None:
+        self._set_active_edit_index(index)
+
+    def _on_entry_focus_out(self, _event: tk.Event) -> None:
+        self.root.after_idle(self._sync_active_edit_from_focus)
+
+    def _sync_active_edit_from_focus(self) -> None:
+        focused = self.root.focus_get()
+        if focused in self.entry_to_index:
+            self._set_active_edit_index(self.entry_to_index[focused])
+            return
+        self._set_active_edit_index(None)
+
+    def _set_active_edit_index(self, index: int | None) -> None:
+        if index == self.active_edit_index:
+            return
+        self.active_edit_index = index
+        self._sync_glow_animation_state()
+        self.refresh_previews()
+
+    def _on_glow_checkbox_toggled(self) -> None:
+        self._sync_glow_animation_state()
+        self.refresh_previews()
+
+    def _sync_glow_animation_state(self) -> None:
+        should_animate = self.glow_active_color_var.get() and self.active_edit_index is not None
+        if should_animate:
+            if self.glow_anim_after_id is None:
+                self._schedule_glow_tick()
+        else:
+            if self.glow_anim_after_id is not None:
+                self.root.after_cancel(self.glow_anim_after_id)
+                self.glow_anim_after_id = None
+
+    def _schedule_glow_tick(self) -> None:
+        self.glow_anim_after_id = self.root.after(self.glow_tick_ms, self._on_glow_tick)
+
+    def _on_glow_tick(self) -> None:
+        self.glow_anim_after_id = None
+        if not (self.glow_active_color_var.get() and self.active_edit_index is not None):
+            return
+        self.refresh_previews()
+        self._schedule_glow_tick()
+
+    def _lerp_rgb(self, a: RgbColor, b: RgbColor, t: float) -> RgbColor:
+        return (
+            int(a[0] + (b[0] - a[0]) * t),
+            int(a[1] + (b[1] - a[1]) * t),
+            int(a[2] + (b[2] - a[2]) * t),
+        )
+
+    def _lerp_float(self, a: float, b: float, t: float) -> float:
+        return a + (b - a) * t
+
+    def _current_glow_style(self) -> tuple[RgbColor, float, RgbColor, float]:
+        # Smoothly traverse: self -> black -> white -> self, in one full cycle.
+        self_tint: RgbColor = (255, 255, 180)
+        black_tint: RgbColor = (0, 0, 0)
+        white_tint: RgbColor = (255, 255, 255)
+        self_alpha = 0.18
+        dark_alpha = 0.8
+        light_alpha = 0.8
+
+        t = (time.monotonic() % self.glow_cycle_seconds) / self.glow_cycle_seconds
+
+        if t < (1.0 / 3.0):
+            seg = t * 3.0
+            center_tint = self._lerp_rgb(self_tint, black_tint, seg)
+            center_alpha = self._lerp_float(self_alpha, dark_alpha, seg)
+        elif t < (2.0 / 3.0):
+            seg = (t - (1.0 / 3.0)) * 3.0
+            center_tint = self._lerp_rgb(black_tint, white_tint, seg)
+            center_alpha = self._lerp_float(dark_alpha, light_alpha, seg)
+        else:
+            seg = (t - (2.0 / 3.0)) * 3.0
+            center_tint = self._lerp_rgb(white_tint, self_tint, seg)
+            center_alpha = self._lerp_float(light_alpha, self_alpha, seg)
+
+        edge_tint = center_tint
+        edge_alpha = center_alpha * 0.45
+        return center_tint, center_alpha, edge_tint, edge_alpha
 
     def _set_row_invalid(self, index: int, invalid: bool) -> None:
         style = "Invalid.TEntry" if invalid else "TEntry"
@@ -553,7 +665,9 @@ class PaletteEditorApp:
             return
 
         if self.normal_palette and self.pixel_indices:
-            original_pixels = self.render_with_palette(self.normal_palette)
+            glow_index = self.active_edit_index if self.glow_active_color_var.get() else None
+            glow_style = self._current_glow_style() if glow_index is not None else None
+            original_pixels = self.render_with_palette(self.normal_palette, glow_index=glow_index, glow_style=glow_style)
             edited_pixels = self.render_with_palette(self.edited_palette or self.normal_palette)
         else:
             original_pixels = self.flatten_original_pixels()
@@ -577,7 +691,12 @@ class PaletteEditorApp:
         tile = ((x // 2) + (y // 2)) % 2
         return (176, 176, 176) if tile == 0 else (136, 136, 136)
 
-    def render_with_palette(self, palette: list[RgbColor]) -> list[RgbColor]:
+    def render_with_palette(
+        self,
+        palette: list[RgbColor],
+        glow_index: int | None = None,
+        glow_style: tuple[RgbColor, float, RgbColor, float] | None = None,
+    ) -> list[RgbColor]:
         out: list[RgbColor] = []
         for i, px in enumerate(self.pixels):
             x = i % self.width
@@ -589,7 +708,61 @@ class PaletteEditorApp:
             idx = self.pixel_indices[i] if i < len(self.pixel_indices) else 0
             idx = max(0, min(idx, len(palette) - 1))
             out.append(palette[idx])
+
+        if glow_index is None:
+            return out
+        if not (0 <= glow_index < len(palette)):
+            return out
+
+        highlight_mask = [False] * len(self.pixels)
+        for i, px in enumerate(self.pixels):
+            if px[3] == 0:
+                continue
+            idx = self.pixel_indices[i] if i < len(self.pixel_indices) else 0
+            if idx == glow_index:
+                highlight_mask[i] = True
+
+        if not any(highlight_mask):
+            return out
+
+        if glow_style is None:
+            center_tint = (255, 255, 180)
+            center_alpha = 0.18
+            edge_tint = (255, 255, 180)
+            edge_alpha = 0.14
+        else:
+            center_tint, center_alpha, edge_tint, edge_alpha = glow_style
+
+        for i, is_highlight in enumerate(highlight_mask):
+            if is_highlight:
+                out[i] = self._blend_rgb(out[i], center_tint, center_alpha)
+                continue
+
+            x = i % self.width
+            y = i // self.width
+            has_neighbor = False
+            for ny in range(max(0, y - 1), min(self.height, y + 2)):
+                row_base = ny * self.width
+                for nx in range(max(0, x - 1), min(self.width, x + 2)):
+                    if nx == x and ny == y:
+                        continue
+                    if highlight_mask[row_base + nx]:
+                        has_neighbor = True
+                        break
+                if has_neighbor:
+                    break
+
+            if has_neighbor:
+                out[i] = self._blend_rgb(out[i], edge_tint, edge_alpha)
         return out
+
+    def _blend_rgb(self, base: RgbColor, overlay: RgbColor, alpha: float) -> RgbColor:
+        inv = 1.0 - alpha
+        return (
+            int(base[0] * inv + overlay[0] * alpha),
+            int(base[1] * inv + overlay[1] * alpha),
+            int(base[2] * inv + overlay[2] * alpha),
+        )
 
     def make_photoimage(self, rgb_pixels: list[RgbColor]) -> tk.PhotoImage:
         scaled_w = self.width * self.scale
