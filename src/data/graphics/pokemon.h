@@ -27547,10 +27547,3 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Gemma[] = INCGFX_U16("graphics/pokemon/gemma/shiny.pal", ".gbapal");
     const u8 gMonIcon_Gemma[] = INCGFX_U8("graphics/pokemon/gemma/icon.png", ".4bpp");
     const u8 gMonFootprint_Gemma[] = INCGFX_U8("graphics/pokemon/gemma/footprint.png", ".1bpp");
-
-    const u32 gMonFrontPic_Gemma[] = INCGFX_U32("graphics/pokemon/gemma/anim_front.png", ".4bpp.lz");
-    const u32 gMonBackPic_Gemma[] = INCGFX_U32("graphics/pokemon/gemma/back.png", ".4bpp.lz");
-    const u16 gMonPalette_Gemma[] = INCGFX_U16("graphics/pokemon/gemma/normal.pal", ".gbapal");
-    const u16 gMonShinyPalette_Gemma[] = INCGFX_U16("graphics/pokemon/gemma/shiny.pal", ".gbapal");
-    const u8 gMonIcon_Gemma[] = INCGFX_U8("graphics/pokemon/gemma/icon.png", ".4bpp");
-    const u8 gMonFootprint_Gemma[] = INCGFX_U8("graphics/pokemon/gemma/footprint.png", ".1bpp");
