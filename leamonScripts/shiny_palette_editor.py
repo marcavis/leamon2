@@ -736,24 +736,7 @@ class PaletteEditorApp:
         for i, is_highlight in enumerate(highlight_mask):
             if is_highlight:
                 out[i] = self._blend_rgb(out[i], center_tint, center_alpha)
-                continue
 
-            x = i % self.width
-            y = i // self.width
-            has_neighbor = False
-            for ny in range(max(0, y - 1), min(self.height, y + 2)):
-                row_base = ny * self.width
-                for nx in range(max(0, x - 1), min(self.width, x + 2)):
-                    if nx == x and ny == y:
-                        continue
-                    if highlight_mask[row_base + nx]:
-                        has_neighbor = True
-                        break
-                if has_neighbor:
-                    break
-
-            if has_neighbor:
-                out[i] = self._blend_rgb(out[i], edge_tint, edge_alpha)
         return out
 
     def _blend_rgb(self, base: RgbColor, overlay: RgbColor, alpha: float) -> RgbColor:
