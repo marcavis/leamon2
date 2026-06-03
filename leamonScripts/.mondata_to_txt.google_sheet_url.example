@@ -1,0 +1,7 @@
+# Copy this file to:
+#   leamonScripts/.mondata_to_txt.google_sheet_url
+# and replace the value below with your Google Sheets URL or spreadsheet ID.
+#
+# The local file is gitignored to avoid leaking private links.
+
+https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit

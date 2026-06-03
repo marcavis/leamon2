@@ -67,3 +67,4 @@ tools/aif2pcm/aif2pcm
 __pycache__
 .map_version
 .~lock*
+leamonScripts/.mondata_to_txt.google_sheet_url

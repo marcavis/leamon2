@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Generate a single species definition txt from leamonScripts/mondata.ods.
+"""Generate a single species definition txt from mondata sources.
 
 Usage:
     python leamonScripts/mondata_to_txt.py Karin
+    python leamonScripts/mondata_to_txt.py Karin --google-sheet <url-or-id>
+    python leamonScripts/mondata_to_txt.py Karin --local-ods
 
-This reads the ODS workbook, finds the exact species row for the requested
+By default, this reads a public Google Sheets workbook.
+The URL/ID is read from an ignored local config file unless passed via
+--google-sheet. You can opt in to the local ODS workbook with --local-ods.
+
+The script finds the exact species row for the requested
 character name, and writes leamonScripts/data/karin.txt using the current
 template-oriented field order.
 """
@@ -12,9 +18,14 @@ template-oriented field order.
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import re
 import textwrap
 import unicodedata
+import urllib.error
+import urllib.parse
+import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -24,6 +35,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKBOOK_PATH = REPO_ROOT / "leamonScripts" / "mondata.ods"
 TEMPLATE_PATH = REPO_ROOT / "leamonScripts" / "data" / "_template.txt"
 OUTPUT_DIR = REPO_ROOT / "leamonScripts" / "data"
+GOOGLE_SHEET_CONFIG_PATH = REPO_ROOT / "leamonScripts" / ".mondata_to_txt.google_sheet_url"
+DEFAULT_GOOGLE_SHEET_NAMES = ["Stats", "Pokedex", "Images", "Learnset", "Evo", "Defaults"]
 
 NS = {
     "table": "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
@@ -83,6 +96,71 @@ def load_workbook(path: Path) -> dict[str, list[list[str]]]:
                 for _ in range(repeat):
                     rows.append(row[:])
             sheets[sheet_name] = rows
+    return sheets
+
+
+def parse_google_sheet_id(value: str) -> str:
+    raw = value.strip()
+    if not raw:
+        raise ValueError("Google Sheet URL/ID cannot be empty")
+
+    match = re.search(r"/spreadsheets/d/([a-zA-Z0-9-_]+)", raw)
+    if match:
+        return match.group(1)
+
+    if re.fullmatch(r"[a-zA-Z0-9-_]+", raw):
+        return raw
+
+    raise ValueError(
+        "Could not parse Google Sheet ID. Provide a full URL like "
+        "https://docs.google.com/spreadsheets/d/<ID>/edit or pass the raw <ID>."
+    )
+
+
+def load_google_sheet_source(config_path: Path) -> str:
+    if not config_path.exists():
+        raise FileNotFoundError(
+            f"Google Sheet config not found: {config_path}. "
+            "Create this file with the sheet URL or ID, or pass --google-sheet."
+        )
+
+    for line in config_path.read_text(encoding="utf-8").splitlines():
+        value = line.strip()
+        if not value or value.startswith("#"):
+            continue
+        return value
+
+    raise ValueError(
+        f"Google Sheet config file is empty: {config_path}. "
+        "Add the sheet URL or ID on a non-comment line."
+    )
+
+
+def load_google_sheets(spreadsheet_id_or_url: str, sheet_names: list[str] | None = None) -> dict[str, list[list[str]]]:
+    spreadsheet_id = parse_google_sheet_id(spreadsheet_id_or_url)
+    names = sheet_names if sheet_names is not None else DEFAULT_GOOGLE_SHEET_NAMES
+    sheets: dict[str, list[list[str]]] = {}
+
+    for sheet_name in names:
+        query = urllib.parse.urlencode({"format": "csv", "sheet": sheet_name})
+        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?{query}"
+        try:
+            with urllib.request.urlopen(url, timeout=20) as response:
+                payload = response.read().decode("utf-8-sig")
+        except urllib.error.HTTPError as exc:
+            raise RuntimeError(
+                f"Failed to download sheet {sheet_name!r} from Google Sheets (HTTP {exc.code}). "
+                "Ensure the sheet is shared for view access and the tab name matches."
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(
+                f"Failed to download sheet {sheet_name!r} from Google Sheets: {exc.reason}"
+            ) from exc
+
+        reader = csv.reader(io.StringIO(payload))
+        rows = [[normalize_text(cell) for cell in row] for row in reader]
+        sheets[sheet_name] = rows
+
     return sheets
 
 
@@ -205,7 +283,11 @@ def parse_evolutions(rows: list[list[str]], species_name: str) -> list[str]:
     return evolution_lines
 
 
-def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> tuple[str, str]:
+def build_definition(
+    species_name: str,
+    sheets: dict[str, list[list[str]]],
+    source_label: str = "leamonScripts/mondata.ods",
+) -> tuple[str, str]:
     stats = sheet_row_by_species(sheets["Stats"], species_name)
     pokedex_rows = sheets["Pokedex"]
     pokedex = sheet_row_by_species(pokedex_rows, species_name)
@@ -328,7 +410,7 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
             lines.append(f"{key} = {value}")
 
     out: list[str] = []
-    out.append("# Generated from leamonScripts/mondata.ods by mondata_to_txt.py")
+    out.append(f"# Generated from {source_label} by mondata_to_txt.py")
     out.append(f"NAME = {file_name}")
     out.append(f"DISPLAY_NAME = {display_name}")
     image_folder = sanitize_identifier(image_map["IMAGE_FOLDER"]).lower()
@@ -422,16 +504,50 @@ def build_definition(species_name: str, sheets: dict[str, list[list[str]]]) -> t
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate a species txt from mondata.ods")
+    parser = argparse.ArgumentParser(description="Generate a species txt from Google Sheets (default) or local ODS")
     parser.add_argument("species", help="Character/species name to extract, e.g. Karin")
+    parser.add_argument(
+        "--google-sheet",
+        help=(
+            "Google Sheets URL or spreadsheet ID to use as source. "
+            "If omitted, reads leamonScripts/.mondata_to_txt.google_sheet_url."
+        ),
+    )
+    parser.add_argument(
+        "--local-ods",
+        action="store_true",
+        help="Use local leamonScripts/mondata.ods instead of Google Sheets",
+    )
     parser.add_argument(
         "--output",
         help="Optional output path. Defaults to leamonScripts/data/<species>.txt",
     )
     args = parser.parse_args()
 
-    sheets = load_workbook(WORKBOOK_PATH)
-    file_name, content = build_definition(args.species, sheets)
+    if args.local_ods and args.google_sheet:
+        print("ERROR: Use either --local-ods or --google-sheet, not both.")
+        return 1
+
+    if args.local_ods:
+        sheets = load_workbook(WORKBOOK_PATH)
+        source_label = "leamonScripts/mondata.ods"
+    else:
+        try:
+            google_sheet = args.google_sheet or load_google_sheet_source(GOOGLE_SHEET_CONFIG_PATH)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"ERROR: {exc}")
+            print(f"Tip: create {GOOGLE_SHEET_CONFIG_PATH} or pass --google-sheet.")
+            print(f"Tip: rerun with --local-ods to use {WORKBOOK_PATH}")
+            return 1
+        try:
+            sheets = load_google_sheets(google_sheet)
+        except RuntimeError as exc:
+            print(f"ERROR: {exc}")
+            print(f"Tip: rerun with --local-ods to use {WORKBOOK_PATH}")
+            return 1
+        source_label = f"Google Sheets ({parse_google_sheet_id(google_sheet)})"
+
+    file_name, content = build_definition(args.species, sheets, source_label)
     if args.output:
         output_path = Path(args.output)
         if not output_path.is_absolute():
