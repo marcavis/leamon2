@@ -37,6 +37,7 @@ TEMPLATE_PATH = REPO_ROOT / "leamonScripts" / "data" / "_template.txt"
 OUTPUT_DIR = REPO_ROOT / "leamonScripts" / "data"
 GOOGLE_SHEET_CONFIG_PATH = REPO_ROOT / "leamonScripts" / ".mondata_to_txt.google_sheet_url"
 DEFAULT_GOOGLE_SHEET_NAMES = ["Stats", "Pokedex", "Images", "Learnset", "Evo", "Defaults"]
+SHEETS_WITH_METADATA_ROW = {"Stats", "Pokedex", "Images", "Learnset", "Evo"}
 
 NS = {
     "table": "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
@@ -95,6 +96,8 @@ def load_workbook(path: Path) -> dict[str, list[list[str]]]:
                 row = expand_row(row_elem)
                 for _ in range(repeat):
                     rows.append(row[:])
+            if sheet_name in SHEETS_WITH_METADATA_ROW and rows:
+                rows = rows[1:]
             sheets[sheet_name] = rows
     return sheets
 
@@ -173,6 +176,11 @@ def load_google_sheets(spreadsheet_id_or_url: str, sheet_names: list[str] | None
                 "Check tab names in Google Sheets and ensure the workbook URL/ID is correct."
             )
 
+    def normalize_sheet_rows(sheet_name: str, rows: list[list[str]]) -> list[list[str]]:
+        if sheet_name in SHEETS_WITH_METADATA_ROW and rows:
+            return rows[1:]
+        return rows
+
     for sheet_name in names:
         query = urllib.parse.urlencode({"tqx": "out:csv", "sheet": sheet_name})
         url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?{query}"
@@ -192,7 +200,7 @@ def load_google_sheets(spreadsheet_id_or_url: str, sheet_names: list[str] | None
         reader = csv.reader(io.StringIO(payload))
         rows = [[normalize_text(cell) for cell in row] for row in reader]
         validate_sheet_rows(sheet_name, rows)
-        sheets[sheet_name] = rows
+        sheets[sheet_name] = normalize_sheet_rows(sheet_name, rows)
 
     return sheets
 
@@ -335,8 +343,9 @@ def build_definition(
     learn_rows = sheets["Learnset"]
     evolution_rows = sheets.get("Evo", [])
 
-    pokedex_header = pokedex_rows[1] if len(pokedex_rows) > 1 else []
+    pokedex_header = pokedex_rows[0] if pokedex_rows else []
     pokedex_header_map: dict[str, int] = {}
+
     for idx, value in enumerate(pokedex_header):
         key = normalize_text(value).casefold()
         if key:
@@ -423,14 +432,14 @@ def build_definition(
 
     pokedex_map = {
         "CATEGORY_NAME": get_pokedex_cell("category(max11chars)", 6),
-        "HEIGHT": get_pokedex_cell("pokedexHeight", 7),
-        "WEIGHT": get_pokedex_cell("pokedexWeight", 8),
+        "HEIGHT": get_pokedex_cell("pokedexHeight", 8),
+        "WEIGHT": get_pokedex_cell("pokedexWeight", 9),
         "POKEMON_SCALE": get_pokedex_cell("pokemonScale", 9),
         "POKEMON_OFFSET": get_pokedex_cell("pokemonOffset", 10),
         "TRAINER_SCALE": get_pokedex_cell("trainerScale", 11),
         "TRAINER_OFFSET": get_pokedex_cell("trainerOffset", 12),
-        "BODY_COLOR": get_pokedex_cell("color", 13),
-        "NO_FLIP": get_pokedex_cell("noflip", 14),
+        "BODY_COLOR": get_pokedex_cell("color", 14),
+        "NO_FLIP": get_pokedex_cell("noflip", 15),
     }
 
     image_map = {
