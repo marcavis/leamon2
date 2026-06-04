@@ -1,0 +1,55 @@
+gBattleAnimMove_CrystalTomb::
+monbg ANIM_TARGET
+	splitbgprio ANIM_TARGET
+	
+    ^splitbgprio is likely a battle animation script command that tells the engine to split background priority handling. In practice, that means different background layers or parts of the scene can be drawn with separate priority rules instead of sharing one unified layer order.
+
+This is usually used to control what appears in front of or behind other elements during an animation. For example, it can help make effects, sprites, or terrain pieces render correctly when the battle scene needs more complex layering than a single background priority setting would allow.
+
+	setalpha 12, 8
+	@darkens the background
+	simple_palette_blend selector=F_PAL_BG, delay=1, initial_blend_y=0, target_blend_y=7, color=RGB_BLACK
+	waitforvisualfinish
+	createvisualtask AnimTask_BlendParticle, 5, ANIM_TAG_ICE_CRYSTALS, 0, 0, 11, RGB_GREEN
+	createsoundtask SoundTask_LoopSEAdjustPanning, SE_M_BUBBLE_BEAM2, SOUND_PAN_ATTACKER, SOUND_PAN_TARGET, 4, 4, 0, 10
+	@createsprite gIceBeamOuterCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, 12, 0, 12, 20
+	@createsprite gIceBeamOuterCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, -12, 0, -12, 20
+	delay 1
+	call CrystalTombCreateCrystals
+	call CrystalTombCreateCrystals
+	call CrystalTombCreateCrystals
+	@ green tint while the target is being hit by crystals
+	simple_palette_blend selector=F_PAL_TARGET, delay=-31, initial_blend_y=0, target_blend_y=7, color=RGB(8, 28, 12)
+	createvisualtask AnimTask_ShakeMon2, 2, ANIM_TARGET, 2, 0, 25, 1
+	call CrystalTombCreateCrystals
+	call CrystalTombCreateCrystals
+	call CrystalTombCreateCrystals
+	call CrystalTombCreateCrystals
+	call CrystalTombCreateCrystals
+	call CrystalTombCreateCrystals
+	call CrystalTombCreateCrystals
+	createsprite gIceBeamInnerCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, 0, 0, 0, 11
+	delay 1
+	createsprite gIceBeamInnerCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, 0, 0, 0, 11
+	waitforvisualfinish
+	delay 20
+	@call CrystalTombCrystalEffectShort
+	simple_palette_blend selector=F_PAL_TARGET, delay=5, initial_blend_y=7, target_blend_y=0, color=RGB(8, 28, 12)
+	createvisualtask AnimTask_BlendParticle, 5, ANIM_TAG_ICE_CRYSTALS, 0, 11, 0, RGB_GREEN
+	
+	^ This line starts a visual task named AnimTask_BlendParticle. In this battle animation scripting system, createvisualtask is used to hand work off to the engine, so the effect can run over time without needing every frame to be scripted manually.
+
+Here, the task is targeting the particle graphics identified by ANIM_TAG_ICE_CRYSTALS. That means the blend effect is being applied specifically to the crystal particles used by the move, not to the whole screen or to a battler sprite.
+
+The 5 is the task priority. Higher-priority visual tasks usually run earlier or with more importance in the animation scheduler. In practice, this mostly matters when several effects are active at once.
+
+The remaining arguments appear to describe the blend transition: starting at blend level 11, ending at 0, using RGB_GREEN as the blend color. So this line most likely tells the engine to fade out a green tint from the ice crystal particles, returning them to their normal colors.
+
+In the surrounding CrystalTomb script, that fits the flow exactly: earlier, the crystals are tinted green, and this line is the cleanup step that removes that tint near the end of the animation. A common gotcha is that this does not create new particles—it only changes how already-
+	
+	waitforvisualfinish
+	simple_palette_blend selector=F_PAL_BG, delay=0, initial_blend_y=7, target_blend_y=0, color=RGB_BLACK
+	waitforvisualfinish
+	clearmonbg ANIM_TARGET
+	blendoff
+	end
