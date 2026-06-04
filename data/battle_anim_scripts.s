@@ -35617,8 +35617,8 @@ monbg ANIM_TARGET
 	waitforvisualfinish
 	createvisualtask AnimTask_BlendParticle, 5, ANIM_TAG_ICE_CRYSTALS, 0, 0, 11, RGB_GREEN
 	createsoundtask SoundTask_LoopSEAdjustPanning, SE_M_BUBBLE_BEAM2, SOUND_PAN_ATTACKER, SOUND_PAN_TARGET, 4, 4, 0, 10
-	@createsprite gIceBeamOuterCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, 12, 0, 12, 20
-	@createsprite gIceBeamOuterCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, -12, 0, -12, 20
+	createsprite gIceBeamOuterCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, 12, 0, 12, 20
+	createsprite gIceBeamOuterCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, -12, 0, -12, 20
 	delay 1
 	call CrystalTombCreateCrystals
 	call CrystalTombCreateCrystals
@@ -35638,13 +35638,13 @@ monbg ANIM_TARGET
 	createsprite gIceBeamInnerCrystalSpriteTemplate, ANIM_ATTACKER, 2, 20, 0, 0, 0, 11
 	waitforvisualfinish
 	delay 20
-	@call CrystalTombCrystalEffectShort
+	call CrystalTombCrystalEffectShort
 	simple_palette_blend selector=F_PAL_TARGET, delay=5, initial_blend_y=7, target_blend_y=0, color=RGB(8, 28, 12)
-	createvisualtask AnimTask_BlendParticle, 5, ANIM_TAG_ICE_CRYSTALS, 0, 11, 0, RGB_GREEN
 	waitforvisualfinish
 	simple_palette_blend selector=F_PAL_BG, delay=0, initial_blend_y=7, target_blend_y=0, color=RGB_BLACK
 	waitforvisualfinish
 	clearmonbg ANIM_TARGET
+	createvisualtask AnimTask_BlendParticle, 5, ANIM_TAG_ICE_CRYSTALS, 0, 11, 0, RGB_GREEN
 	blendoff
 	end
 
