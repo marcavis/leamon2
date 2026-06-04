@@ -4,11 +4,10 @@
 Usage:
     python leamonScripts/mondata_to_txt.py Karin
     python leamonScripts/mondata_to_txt.py Karin --google-sheet <url-or-id>
-    python leamonScripts/mondata_to_txt.py Karin --local-ods
 
-By default, this reads a public Google Sheets workbook.
+This reads a public Google Sheets workbook.
 The URL/ID is read from an ignored local config file unless passed via
---google-sheet. You can opt in to the local ODS workbook with --local-ods.
+--google-sheet.
 
 The script finds the exact species row for the requested
 character name, and writes leamonScripts/data/karin.txt using the current
@@ -18,7 +17,6 @@ template-oriented field order.
 from __future__ import annotations
 
 import argparse
-import csv
 import io
 import re
 import textwrap
@@ -32,8 +30,6 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-WORKBOOK_PATH = REPO_ROOT / "leamonScripts" / "mondata.ods"
-TEMPLATE_PATH = REPO_ROOT / "leamonScripts" / "data" / "_template.txt"
 OUTPUT_DIR = REPO_ROOT / "leamonScripts" / "data"
 GOOGLE_SHEET_CONFIG_PATH = REPO_ROOT / "leamonScripts" / ".mondata_to_txt.google_sheet_url"
 DEFAULT_GOOGLE_SHEET_NAMES = ["Stats", "Pokedex", "Images", "Learnset", "Evo", "Defaults"]
@@ -45,10 +41,10 @@ SHEET_HEADER_MARKERS: dict[str, tuple[str, ...]] = {
     "Evo": ("method1", "target"),
 }
 
-NS = {
-    "table": "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
-    "office": "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
-    "text": "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
+XLSX_NS = {
+    "main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+    "rel": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "pkg_rel": "http://schemas.openxmlformats.org/package/2006/relationships",
 }
 
 
@@ -73,38 +69,52 @@ def quote(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def expand_row(row_elem: ET.Element) -> list[str]:
-    cells: list[str] = []
-    for cell in row_elem:
-        tag = cell.tag.rsplit("}", 1)[-1]
-        if tag == "table-cell":
-            repeat = int(cell.attrib.get(f"{{{NS['table']}}}number-columns-repeated", "1"))
-            text = normalize_text("".join(cell.itertext()))
-            cells.extend([text] * repeat)
-        elif tag == "covered-table-cell":
-            repeat = int(cell.attrib.get(f"{{{NS['table']}}}number-columns-repeated", "1"))
-            cells.extend([""] * repeat)
-    return cells
+def normalize_numeric_text(value: str) -> str:
+    raw = value.strip()
+    if re.fullmatch(r"-?\d+\.0+", raw):
+        return raw.split(".", 1)[0]
+    return raw
 
 
-def load_workbook(path: Path) -> dict[str, list[list[str]]]:
-    if not path.exists():
-        raise FileNotFoundError(f"Workbook not found: {path}")
+def column_index_from_ref(cell_ref: str) -> int:
+    col = "".join(ch for ch in cell_ref if ch.isalpha()).upper()
+    if not col:
+        return 0
+    index = 0
+    for char in col:
+        index = index * 26 + (ord(char) - ord("A") + 1)
+    return index - 1
 
-    sheets: dict[str, list[list[str]]] = {}
-    with zipfile.ZipFile(path) as archive:
-        root = ET.fromstring(archive.read("content.xml"))
-        for table_elem in root.findall(".//table:table", NS):
-            sheet_name = table_elem.attrib.get(f"{{{NS['table']}}}name", "")
-            rows: list[list[str]] = []
-            for row_elem in table_elem.findall("table:table-row", NS):
-                repeat = int(row_elem.attrib.get(f"{{{NS['table']}}}number-rows-repeated", "1"))
-                row = expand_row(row_elem)
-                for _ in range(repeat):
-                    rows.append(row[:])
-            rows = normalize_sheet_rows(sheet_name, rows)
-            sheets[sheet_name] = rows
-    return sheets
+
+def parse_xlsx_sheet_rows(archive: zipfile.ZipFile, sheet_path: str, shared_strings: list[str]) -> list[list[str]]:
+    sheet_root = ET.fromstring(archive.read(sheet_path))
+    rows: list[list[str]] = []
+
+    for row_elem in sheet_root.findall("main:sheetData/main:row", XLSX_NS):
+        row: list[str] = []
+        for cell_elem in row_elem.findall("main:c", XLSX_NS):
+            ref = cell_elem.attrib.get("r", "")
+            col_index = column_index_from_ref(ref)
+            while len(row) <= col_index:
+                row.append("")
+
+            value_elem = cell_elem.find("main:v", XLSX_NS)
+            if value_elem is None:
+                continue
+
+            raw_value = value_elem.text or ""
+            cell_type = cell_elem.attrib.get("t")
+            if cell_type == "s" and raw_value.isdigit():
+                shared_index = int(raw_value)
+                value = shared_strings[shared_index] if shared_index < len(shared_strings) else raw_value
+            else:
+                value = normalize_numeric_text(raw_value)
+
+            row[col_index] = normalize_text(value)
+
+        rows.append(row)
+
+    return rows
 
 
 def normalize_sheet_rows(sheet_name: str, rows: list[list[str]]) -> list[list[str]]:
@@ -193,26 +203,53 @@ def load_google_sheets(spreadsheet_id_or_url: str, sheet_names: list[str] | None
                 "Check tab names in Google Sheets and ensure the workbook URL/ID is correct."
             )
 
-    for sheet_name in names:
-        query = urllib.parse.urlencode({"tqx": "out:csv", "sheet": sheet_name})
-        url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/gviz/tq?{query}"
-        try:
-            with urllib.request.urlopen(url, timeout=20) as response:
-                payload = response.read().decode("utf-8-sig")
-        except urllib.error.HTTPError as exc:
-            raise RuntimeError(
-                f"Failed to download sheet {sheet_name!r} from Google Sheets (HTTP {exc.code}). "
-                "Ensure the sheet is shared for view access and the tab name matches."
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(
-                f"Failed to download sheet {sheet_name!r} from Google Sheets: {exc.reason}"
-            ) from exc
+    xlsx_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/export?format=xlsx"
+    try:
+        with urllib.request.urlopen(xlsx_url, timeout=30) as response:
+            payload = response.read()
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(
+            f"Failed to download workbook from Google Sheets (HTTP {exc.code}). "
+            "Ensure the sheet is shared for view access."
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Failed to download workbook from Google Sheets: {exc.reason}") from exc
 
-        reader = csv.reader(io.StringIO(payload))
-        rows = [[normalize_text(cell) for cell in row] for row in reader]
-        validate_sheet_rows(sheet_name, rows)
-        sheets[sheet_name] = normalize_sheet_rows(sheet_name, rows)
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        workbook_root = ET.fromstring(archive.read("xl/workbook.xml"))
+        rels_root = ET.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
+        rel_targets = {
+            rel.attrib["Id"]: rel.attrib["Target"]
+            for rel in rels_root.findall("pkg_rel:Relationship", XLSX_NS)
+        }
+
+        shared_strings: list[str] = []
+        if "xl/sharedStrings.xml" in archive.namelist():
+            shared_root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
+            for entry in shared_root.findall("main:si", XLSX_NS):
+                shared_strings.append(normalize_text("".join(part.text or "" for part in entry.findall(".//main:t", XLSX_NS))))
+
+        for sheet_name in names:
+            sheet_path: str | None = None
+            for sheet in workbook_root.findall("main:sheets/main:sheet", XLSX_NS):
+                if sheet.attrib.get("name") != sheet_name:
+                    continue
+                rid = sheet.attrib.get(f"{{{XLSX_NS['rel']}}}id", "")
+                target = rel_targets.get(rid)
+                if not target:
+                    break
+                sheet_path = target if target.startswith("xl/") else f"xl/{target}"
+                break
+
+            if not sheet_path:
+                raise RuntimeError(
+                    f"Downloaded workbook, but tab {sheet_name!r} was not found. "
+                    "Check tab names in Google Sheets and ensure the workbook URL/ID is correct."
+                )
+
+            rows = parse_xlsx_sheet_rows(archive, sheet_path, shared_strings)
+            validate_sheet_rows(sheet_name, rows)
+            sheets[sheet_name] = normalize_sheet_rows(sheet_name, rows)
 
     return sheets
 
@@ -346,8 +383,11 @@ def parse_evolutions(rows: list[list[str]], species_name: str) -> list[str]:
 def build_definition(
     species_name: str,
     sheets: dict[str, list[list[str]]],
-    source_label: str = "leamonScripts/mondata.ods",
+    source_label: str = "Google Sheets",
 ) -> tuple[str, str]:
+    def cell(row: list[str], index: int, default: str = "") -> str:
+        return row[index] if index < len(row) else default
+
     stats = sheet_row_by_species(sheets["Stats"], species_name)
     pokedex_rows = sheets["Pokedex"]
     pokedex = sheet_row_by_species(pokedex_rows, species_name)
@@ -414,34 +454,34 @@ def build_definition(
     file_name = sanitize_identifier(species_name).lower()
 
     stats_map = {
-        "BASE_HP": stats[1],
-        "BASE_ATTACK": stats[2],
-        "BASE_DEFENSE": stats[3],
-        "BASE_SP_ATTACK": stats[4],
-        "BASE_SP_DEFENSE": stats[5],
-        "BASE_SPEED": stats[6],
-        "BST": stats[7],
-        "TYPE1": stats[8],
-        "TYPE2": stats[9],
-        "ABILITY1": stats[10],
-        "ABILITY2": stats[11],
-        "ABILITY_HIDDEN": stats[12],
-        "EV_HP": stats[13],
-        "EV_ATTACK": stats[14],
-        "EV_DEFENSE": stats[15],
-        "EV_SP_ATTACK": stats[16],
-        "EV_SP_DEFENSE": stats[17],
-        "EV_SPEED": stats[18],
-        "ITEM_COMMON": stats[19],
-        "ITEM_RARE": stats[20],
-        "CATCH_RATE": stats[21],
-        "EXP_YIELD": stats[22],
-        "GENDER_RATIO": stats[23],
-        "EGG_CYCLES": stats[24],
-        "FRIENDSHIP": stats[25],
-        "GROWTH_RATE": stats[26],
-        "EGG_GROUP1": stats[27],
-        "EGG_GROUP2": stats[28],
+        "BASE_HP": cell(stats, 1),
+        "BASE_ATTACK": cell(stats, 2),
+        "BASE_DEFENSE": cell(stats, 3),
+        "BASE_SP_ATTACK": cell(stats, 4),
+        "BASE_SP_DEFENSE": cell(stats, 5),
+        "BASE_SPEED": cell(stats, 6),
+        "BST": cell(stats, 7),
+        "TYPE1": cell(stats, 8),
+        "TYPE2": cell(stats, 9),
+        "ABILITY1": cell(stats, 10),
+        "ABILITY2": cell(stats, 11),
+        "ABILITY_HIDDEN": cell(stats, 12),
+        "EV_HP": cell(stats, 13),
+        "EV_ATTACK": cell(stats, 14),
+        "EV_DEFENSE": cell(stats, 15),
+        "EV_SP_ATTACK": cell(stats, 16),
+        "EV_SP_DEFENSE": cell(stats, 17),
+        "EV_SPEED": cell(stats, 18),
+        "ITEM_COMMON": cell(stats, 19),
+        "ITEM_RARE": cell(stats, 20),
+        "CATCH_RATE": cell(stats, 21),
+        "EXP_YIELD": cell(stats, 22),
+        "GENDER_RATIO": cell(stats, 23),
+        "EGG_CYCLES": cell(stats, 24),
+        "FRIENDSHIP": cell(stats, 25),
+        "GROWTH_RATE": cell(stats, 26),
+        "EGG_GROUP1": cell(stats, 27),
+        "EGG_GROUP2": cell(stats, 28),
     }
 
     pokedex_map = {
@@ -457,17 +497,17 @@ def build_definition(
     }
 
     image_map = {
-        "IMAGE_FOLDER": images[1] if len(images) > 1 and images[1].strip() else file_name,
-        "FRONT_ANIM_FRAMES": images[5] if len(images) > 5 and images[5].strip() else defaults.get("animate", "[(0,1)]"),
-        "BACK_ANIM_ID": images[3] if len(images) > 3 and images[3].strip() else defaults.get("backAnim", "BACK_ANIM_NONE"),
-        "FRONT_PIC_SIZE": images[6] if len(images) > 6 and images[6].strip() else defaults.get("frontSpriteSize", "(64,64)"),
-        "FRONT_PIC_Y_OFFSET": images[7] if len(images) > 7 and images[7].strip() else defaults.get("frontYOffset", "0"),
-        "BACK_PIC_SIZE": images[8] if len(images) > 8 and images[8].strip() else defaults.get("backSpriteSize", "(64,64)"),
-        "BACK_PIC_Y_OFFSET": images[9] if len(images) > 9 and images[9].strip() else defaults.get("backYOffset", "0"),
-        "SHADOW_X_OFFSET": images[10] if len(images) > 10 and images[10].strip() else defaults.get("shadowXOffset", "2"),
-        "SHADOW_Y_OFFSET": images[11] if len(images) > 11 and images[11].strip() else defaults.get("shadowYOffset", "16"),
-        "SHADOW_SIZE": images[12] if len(images) > 12 and images[12].strip() else defaults.get("shadowSize", "SHADOW_SIZE_M"),
-        "ICON_PAL_INDEX": images[4] if len(images) > 4 and images[4].strip() else "0",
+        "IMAGE_FOLDER": cell(images, 1).strip() if cell(images, 1).strip() else file_name,
+        "FRONT_ANIM_FRAMES": cell(images, 5).strip() if cell(images, 5).strip() else defaults.get("animate", "[(0,1)]"),
+        "BACK_ANIM_ID": cell(images, 3).strip() if cell(images, 3).strip() else defaults.get("backAnim", "BACK_ANIM_NONE"),
+        "FRONT_PIC_SIZE": cell(images, 6).strip() if cell(images, 6).strip() else defaults.get("frontSpriteSize", "(64,64)"),
+        "FRONT_PIC_Y_OFFSET": cell(images, 7).strip() if cell(images, 7).strip() else defaults.get("frontYOffset", "0"),
+        "BACK_PIC_SIZE": cell(images, 8).strip() if cell(images, 8).strip() else defaults.get("backSpriteSize", "(64,64)"),
+        "BACK_PIC_Y_OFFSET": cell(images, 9).strip() if cell(images, 9).strip() else defaults.get("backYOffset", "0"),
+        "SHADOW_X_OFFSET": cell(images, 10).strip() if cell(images, 10).strip() else defaults.get("shadowXOffset", "2"),
+        "SHADOW_Y_OFFSET": cell(images, 11).strip() if cell(images, 11).strip() else defaults.get("shadowYOffset", "16"),
+        "SHADOW_SIZE": cell(images, 12).strip() if cell(images, 12).strip() else defaults.get("shadowSize", "SHADOW_SIZE_M"),
+        "ICON_PAL_INDEX": cell(images, 4).strip() if cell(images, 4).strip() else "0",
     }
 
     display_name_raw = get_pokedex_cell("name", 1)
@@ -583,7 +623,7 @@ def build_definition(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate a species txt from Google Sheets (default) or local ODS")
+    parser = argparse.ArgumentParser(description="Generate a species txt from Google Sheets")
     parser.add_argument("species", help="Character/species name to extract, e.g. Karin")
     parser.add_argument(
         "--google-sheet",
@@ -593,38 +633,23 @@ def main() -> int:
         ),
     )
     parser.add_argument(
-        "--local-ods",
-        action="store_true",
-        help="Use local leamonScripts/mondata.ods instead of Google Sheets",
-    )
-    parser.add_argument(
         "--output",
         help="Optional output path. Defaults to leamonScripts/data/<species>.txt",
     )
     args = parser.parse_args()
 
-    if args.local_ods and args.google_sheet:
-        print("ERROR: Use either --local-ods or --google-sheet, not both.")
+    try:
+        google_sheet = args.google_sheet or load_google_sheet_source(GOOGLE_SHEET_CONFIG_PATH)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"ERROR: {exc}")
+        print(f"Tip: create {GOOGLE_SHEET_CONFIG_PATH} or pass --google-sheet.")
         return 1
-
-    if args.local_ods:
-        sheets = load_workbook(WORKBOOK_PATH)
-        source_label = "leamonScripts/mondata.ods"
-    else:
-        try:
-            google_sheet = args.google_sheet or load_google_sheet_source(GOOGLE_SHEET_CONFIG_PATH)
-        except (FileNotFoundError, ValueError) as exc:
-            print(f"ERROR: {exc}")
-            print(f"Tip: create {GOOGLE_SHEET_CONFIG_PATH} or pass --google-sheet.")
-            print(f"Tip: rerun with --local-ods to use {WORKBOOK_PATH}")
-            return 1
-        try:
-            sheets = load_google_sheets(google_sheet)
-        except RuntimeError as exc:
-            print(f"ERROR: {exc}")
-            print(f"Tip: rerun with --local-ods to use {WORKBOOK_PATH}")
-            return 1
-        source_label = f"Google Sheets ({parse_google_sheet_id(google_sheet)})"
+    try:
+        sheets = load_google_sheets(google_sheet)
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}")
+        return 1
+    source_label = f"Google Sheets ({parse_google_sheet_id(google_sheet)})"
 
     file_name, content = build_definition(args.species, sheets, source_label)
     if args.output:
