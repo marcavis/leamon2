@@ -906,8 +906,12 @@ enum __attribute__((packed)) Move
     MOVES_COUNT_GEN9,
 
     // Add any custom moves here, not further down!
+    //TODO: Leamon moves go here
+    MOVE_CRYSTAL_TOMB = MOVES_COUNT_GEN9,
+    MOVES_COUNT_LEAMON,
 
-    MOVES_COUNT = MOVES_COUNT_GEN9,
+    MOVES_COUNT = MOVES_COUNT_LEAMON,
+
 
     // Z Moves
     FIRST_Z_MOVE = MOVES_COUNT,
