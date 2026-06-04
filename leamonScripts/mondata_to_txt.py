@@ -384,7 +384,9 @@ def build_definition(
 
     learnset_lines: list[str] = []
     if learnset_levels is not None and learnset_moves is not None:
-        for level, move in zip(learnset_levels[1:], learnset_moves[1:]):
+        # Paired-row layout keeps metadata in column 2; actual level/move pairs
+        # start at column 3.
+        for level, move in zip(learnset_levels[2:], learnset_moves[2:]):
             if not level.strip() or not move.strip():
                 continue
             learnset_lines.append(f"{format_learnset_level(level)},{format_move_name(move)}")
