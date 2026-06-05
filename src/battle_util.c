@@ -6581,6 +6581,10 @@ static inline u32 CalcMoveBasePowerAfterModifiers(struct DamageContext *ctx)
         if (IsSlicingMove(move))
            modifier = uq4_12_multiply(modifier, UQ_4_12(1.5));
         break;
+    // case ABILITY_SUPER_CLAW:
+        // if (IsClawMove(move))
+        //    modifier = uq4_12_multiply(modifier, UQ_4_12(1.5));
+        // break;
     case ABILITY_SUPREME_OVERLORD:
         modifier = uq4_12_multiply(modifier, GetSupremeOverlordModifier(battlerAtk));
         break;

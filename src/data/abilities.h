@@ -2494,4 +2494,11 @@ const struct AbilityInfo gAbilitiesInfo[ABILITIES_COUNT] =
         .description = COMPOUND_STRING("Eggs in party raise power."),
         .aiRating = 4,
     },
+
+    [ABILITY_TURBO_CLAW] =
+    {
+        .name = _("Turbo Claw"),
+        .description = COMPOUND_STRING("Claw moves go first."),
+        .aiRating = 4,
+    },
 };
