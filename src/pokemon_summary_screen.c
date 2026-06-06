@@ -635,9 +635,9 @@ static const struct WindowTemplate sPageInfoTemplate[] =
     [PSS_DATA_WINDOW_INFO_ABILITY] = {
         .bg = 0,
         .tilemapLeft = 11,
-        .tilemapTop = 9,
+        .tilemapTop = 8,
         .width = 18,
-        .height = 4,
+        .height = 6,
         .paletteNum = 6,
         .baseBlock = 503,
     },
@@ -3502,13 +3502,13 @@ static void Task_PrintInfoPage(u8 taskId)
         PrintMonAbilityName();
         break;
     case 4:
-        PrintMonAbilityDescription();
-        break;
-    case 5:
         BufferMonTrainerMemo();
         break;
-    case 6:
+    case 5:
         PrintMonTrainerMemo();
+        break;
+    case 6:
+        PrintMonAbilityDescription();
         break;
     case 7:
         DestroyTask(taskId);
@@ -3553,6 +3553,7 @@ static void PrintMonAbilityDescription(void)
 {
     enum Ability ability = GetAbilityBySpecies(sMonSummaryScreen->summary.species, sMonSummaryScreen->summary.abilityNum);
     PrintTextOnWindow(AddWindowFromTemplateList(sPageInfoTemplate, PSS_DATA_WINDOW_INFO_ABILITY), gAbilitiesInfo[ability].description, 0, 17, 0, 0);
+    PrintTextOnWindow(AddWindowFromTemplateList(sPageInfoTemplate, PSS_DATA_WINDOW_INFO_ABILITY), gAbilitiesInfo[ability].description, 0, 33, 0, 0);
 }
 
 static void BufferMonTrainerMemo(void)
