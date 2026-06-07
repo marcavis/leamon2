@@ -27547,3 +27547,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Gemma[] = INCGFX_U16("graphics/pokemon/gemma/shiny.pal", ".gbapal");
     const u8 gMonIcon_Gemma[] = INCGFX_U8("graphics/pokemon/gemma/icon.png", ".4bpp");
     const u8 gMonFootprint_Gemma[] = INCGFX_U8("graphics/pokemon/gemma/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Azalea[] = INCGFX_U32("graphics/pokemon/azalea/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Azalea[] = INCGFX_U32("graphics/pokemon/azalea/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Azalea[] = INCGFX_U16("graphics/pokemon/azalea/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Azalea[] = INCGFX_U16("graphics/pokemon/azalea/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Azalea[] = INCGFX_U8("graphics/pokemon/azalea/icon.png", ".4bpp");
+    const u8 gMonFootprint_Azalea[] = INCGFX_U8("graphics/pokemon/azalea/footprint.png", ".1bpp");

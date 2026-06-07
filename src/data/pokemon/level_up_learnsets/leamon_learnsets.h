@@ -151,3 +151,18 @@ static const struct LevelUpMove sEgemmaLevelUpLearnset[] = {
     LEVEL_UP_MOVE(22, MOVE_STONE_EDGE),
     LEVEL_UP_END
 };
+
+static const struct LevelUpMove sCazaleaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_END
+};
+
+static const struct LevelUpMove sAzaleaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_END
+};
+
+static const struct LevelUpMove sEazaleaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_END
+};
