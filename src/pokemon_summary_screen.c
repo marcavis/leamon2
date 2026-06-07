@@ -648,7 +648,7 @@ static const struct WindowTemplate sPageInfoTemplate[] =
         .width = 18,
         .height = 6,
         .paletteNum = 6,
-        .baseBlock = 575,
+        .baseBlock = 611,
     },
 };
 static const struct WindowTemplate sPageSkillsTemplate[] =
@@ -3502,13 +3502,13 @@ static void Task_PrintInfoPage(u8 taskId)
         PrintMonAbilityName();
         break;
     case 4:
-        BufferMonTrainerMemo();
+        PrintMonAbilityDescription();
         break;
     case 5:
-        PrintMonTrainerMemo();
+        BufferMonTrainerMemo();
         break;
     case 6:
-        PrintMonAbilityDescription();
+        PrintMonTrainerMemo();
         break;
     case 7:
         DestroyTask(taskId);
