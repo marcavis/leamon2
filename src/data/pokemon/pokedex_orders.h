@@ -1066,6 +1066,7 @@ const u16 gPokedexOrder_Alphabetical[] =
     NATIONAL_DEX_CAZALEA,
     NATIONAL_DEX_AZALEA,
     NATIONAL_DEX_EAZALEA,
+    NATIONAL_DEX_CELINE,
 };
 
 const u16 gPokedexOrder_Weight[] =
@@ -2956,6 +2957,7 @@ const u16 gPokedexOrder_Weight[] =
     // 2204.4 lbs / 999.9 kg
     NATIONAL_DEX_COSMOEM,
     NATIONAL_DEX_CELESTEELA,
+ NATIONAL_DEX_CELINE,
  NATIONAL_DEX_CAZALEA,
  NATIONAL_DEX_EAZALEA,
  NATIONAL_DEX_AZALEA,
@@ -4349,4 +4351,5 @@ const u16 gPokedexOrder_Height[] =
     // 328'01" / 100m
     //NATIONAL_DEX_ETERNATUS_ETERNAMAX,
  NATIONAL_DEX_KARIN,
+ NATIONAL_DEX_CELINE,
 };

@@ -27554,3 +27554,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Azalea[] = INCGFX_U16("graphics/pokemon/azalea/shiny.pal", ".gbapal");
     const u8 gMonIcon_Azalea[] = INCGFX_U8("graphics/pokemon/azalea/icon.png", ".4bpp");
     const u8 gMonFootprint_Azalea[] = INCGFX_U8("graphics/pokemon/azalea/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Celine[] = INCGFX_U32("graphics/pokemon/celine/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Celine[] = INCGFX_U32("graphics/pokemon/celine/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Celine[] = INCGFX_U16("graphics/pokemon/celine/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Celine[] = INCGFX_U16("graphics/pokemon/celine/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Celine[] = INCGFX_U8("graphics/pokemon/celine/icon.png", ".4bpp");
+    const u8 gMonFootprint_Celine[] = INCGFX_U8("graphics/pokemon/celine/footprint.png", ".1bpp");

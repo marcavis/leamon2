@@ -903,6 +903,57 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .levelUpLearnset = sEazaleaLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
     },
+
+    [SPECIES_CELINE] =
+    {
+        .baseHP        = 70,
+        .baseAttack    = 88,
+        .baseDefense   = 60,
+        .baseSpeed     = 69,
+        .baseSpAttack  = 103,
+        .baseSpDefense = 62,
+        .types = MON_TYPES(TYPE_ELECTRIC, TYPE_DRAGON),
+        .catchRate = 200,
+        .expYield = 215,
+        .evYield_SpAttack = 2,
+        .genderRatio = PERCENT_FEMALE(50),
+        .eggCycles = 20,
+        .friendship = STANDARD_FRIENDSHIP,
+        .growthRate = GROWTH_MEDIUM_SLOW,
+        .eggGroups = MON_EGG_GROUPS(EGG_GROUP_HUMAN_LIKE),
+        .abilities = { ABILITY_PUNK_ROCK, ABILITY_NONE, ABILITY_NONE },
+        .bodyColor = BODY_COLOR_BLUE,
+        .speciesName = _("Celine"),
+        .cryId = CRY_NONE,
+        .natDexNum = NATIONAL_DEX_CELINE,
+        .categoryName = _("Dragon-fox"),
+        .height = 17,
+        .weight = 615,
+        .description = COMPOUND_STRING(
+            "TODO: Pokedex description"),
+        .pokemonScale = 256,
+        .pokemonOffset = 0,
+        .trainerScale = 288,
+        .trainerOffset = 0,
+        .frontPic = gMonFrontPic_Celine,
+        .frontPicSize = MON_COORDS_SIZE(64, 64),
+        .frontPicYOffset = 0,
+        .frontAnimFrames = ANIM_FRAMES(
+            ANIMCMD_FRAME(0,1),
+        ),
+        .backPic = gMonBackPic_Celine,
+        .backPicSize = MON_COORDS_SIZE(64, 64),
+        .backPicYOffset = 0,
+        .backAnimId = BACK_ANIM_H_VIBRATE,
+        .palette = gMonPalette_Celine,
+        .shinyPalette = gMonShinyPalette_Celine,
+        .iconSprite = gMonIcon_Celine,
+        .iconPalIndex = 0,
+        SHADOW(2, 16, SHADOW_SIZE_M)
+        FOOTPRINT(Celine)
+        .levelUpLearnset = sCelineLevelUpLearnset,
+        .teachableLearnset = sNoneTeachableLearnset,
+    },
     /* You may add any custom species below this point based on the following structure: */
 
     /*
