@@ -954,6 +954,58 @@ const struct SpeciesInfo gSpeciesInfo[] =
         .levelUpLearnset = sCelineLevelUpLearnset,
         .teachableLearnset = sNoneTeachableLearnset,
     },
+
+    [SPECIES_SAYO] =
+    {
+        .baseHP        = 140,
+        .baseAttack    = 100,
+        .baseDefense   = 80,
+        .baseSpeed     = 60,
+        .baseSpAttack  = 160,
+        .baseSpDefense = 140,
+        .types = MON_TYPES(TYPE_DARK, TYPE_GHOST),
+        .catchRate = 15,
+        .expYield = 370,
+        .evYield_SpAttack = 2,
+        .evYield_SpDefense = 1,
+        .genderRatio = PERCENT_FEMALE(50),
+        .eggCycles = 40,
+        .friendship = STANDARD_FRIENDSHIP,
+        .growthRate = GROWTH_SLOW,
+        .eggGroups = MON_EGG_GROUPS(EGG_GROUP_HUMAN_LIKE),
+        .abilities = { ABILITY_OPPRESSION_AURA, ABILITY_NONE, ABILITY_NONE },
+        .bodyColor = BODY_COLOR_BLACK,
+        .speciesName = _("Sayo"),
+        .cryId = CRY_NONE,
+        .natDexNum = NATIONAL_DEX_SAYO,
+        .categoryName = _("Nogitsune"),
+        .height = 24,
+        .weight = 3352,
+        .description = COMPOUND_STRING(
+            "Vengeance in humanoid form."),
+        .pokemonScale = 256,
+        .pokemonOffset = 0,
+        .trainerScale = 384,
+        .trainerOffset = 0,
+        .frontPic = gMonFrontPic_Sayo,
+        .frontPicSize = MON_COORDS_SIZE(64, 64),
+        .frontPicYOffset = 0,
+        .frontAnimFrames = ANIM_FRAMES(
+            ANIMCMD_FRAME(0,1),
+        ),
+        .backPic = gMonBackPic_Sayo,
+        .backPicSize = MON_COORDS_SIZE(64, 64),
+        .backPicYOffset = 0,
+        .backAnimId = BACK_ANIM_H_VIBRATE,
+        .palette = gMonPalette_Sayo,
+        .shinyPalette = gMonShinyPalette_Sayo,
+        .iconSprite = gMonIcon_Sayo,
+        .iconPalIndex = 0,
+        SHADOW(2, 16, SHADOW_SIZE_M)
+        FOOTPRINT(Sayo)
+        .levelUpLearnset = sSayoLevelUpLearnset,
+        .teachableLearnset = sNoneTeachableLearnset,
+    },
     /* You may add any custom species below this point based on the following structure: */
 
     /*

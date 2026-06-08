@@ -2504,4 +2504,12 @@ const struct AbilityInfo gAbilitiesInfo[ABILITIES_COUNT] =
         .description = COMPOUND_STRING("Claw moves go first."),
         .aiRating = 4,
     },
+
+    [ABILITY_OPPRESSION_AURA] =
+    {
+        .name = _("Oppression Aura"),
+        .description = COMPOUND_STRING("Grants immunity to\n" "Fairy-type moves."),
+        .aiRating = 10,
+        .breakable = TRUE,
+    },
 };

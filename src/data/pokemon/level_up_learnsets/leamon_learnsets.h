@@ -171,3 +171,21 @@ static const struct LevelUpMove sCelineLevelUpLearnset[] = {
     LEVEL_UP_MOVE( 1, MOVE_TACKLE),
     LEVEL_UP_END
 };
+
+static const struct LevelUpMove sSayoLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_DOUBLE_SLAP),
+    LEVEL_UP_MOVE( 1, MOVE_TAIL_WHIP),
+    LEVEL_UP_MOVE( 1, MOVE_ASTONISH),
+    LEVEL_UP_MOVE( 6, MOVE_DISABLE),
+    LEVEL_UP_MOVE(10, MOVE_ENCORE),
+    LEVEL_UP_MOVE(14, MOVE_STOMP),
+    LEVEL_UP_MOVE(19, MOVE_SNARL),
+    LEVEL_UP_MOVE(26, MOVE_BODY_SLAM),
+    LEVEL_UP_MOVE(30, MOVE_TAUNT),
+    LEVEL_UP_MOVE(35, MOVE_HEX),
+    LEVEL_UP_MOVE(46, MOVE_OUTRAGE),
+    LEVEL_UP_MOVE(52, MOVE_ATTACK_ORDER),
+    //TODO:implement her signature move below
+    // LEVEL_UP_MOVE(60, MOVE_VOID_FLAME),
+    LEVEL_UP_END
+};

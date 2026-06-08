@@ -27561,3 +27561,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Celine[] = INCGFX_U16("graphics/pokemon/celine/shiny.pal", ".gbapal");
     const u8 gMonIcon_Celine[] = INCGFX_U8("graphics/pokemon/celine/icon.png", ".4bpp");
     const u8 gMonFootprint_Celine[] = INCGFX_U8("graphics/pokemon/celine/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Sayo[] = INCGFX_U32("graphics/pokemon/sayo/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Sayo[] = INCGFX_U32("graphics/pokemon/sayo/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Sayo[] = INCGFX_U16("graphics/pokemon/sayo/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Sayo[] = INCGFX_U16("graphics/pokemon/sayo/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Sayo[] = INCGFX_U8("graphics/pokemon/sayo/icon.png", ".4bpp");
+    const u8 gMonFootprint_Sayo[] = INCGFX_U8("graphics/pokemon/sayo/footprint.png", ".1bpp");

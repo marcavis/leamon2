@@ -1067,6 +1067,7 @@ const u16 gPokedexOrder_Alphabetical[] =
     NATIONAL_DEX_AZALEA,
     NATIONAL_DEX_EAZALEA,
     NATIONAL_DEX_CELINE,
+    NATIONAL_DEX_SAYO,
 };
 
 const u16 gPokedexOrder_Weight[] =
@@ -2963,6 +2964,7 @@ const u16 gPokedexOrder_Weight[] =
  NATIONAL_DEX_AZALEA,
  NATIONAL_DEX_GEMMA,
  NATIONAL_DEX_EGEMMA,
+ NATIONAL_DEX_SAYO,
 };
 
 const u16 gPokedexOrder_Height[] =
@@ -4352,4 +4354,5 @@ const u16 gPokedexOrder_Height[] =
     //NATIONAL_DEX_ETERNATUS_ETERNAMAX,
  NATIONAL_DEX_KARIN,
  NATIONAL_DEX_CELINE,
+ NATIONAL_DEX_SAYO,
 };

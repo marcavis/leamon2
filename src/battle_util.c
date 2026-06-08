@@ -2282,6 +2282,10 @@ bool32 CanAbilityAbsorbMove(struct DamageContext *ctx)
         if (ctx->moveType == TYPE_FIRE && (B_FLASH_FIRE_FROZEN >= GEN_5 || !(gBattleMons[ctx->battlerDef].status1 & STATUS1_FREEZE)))
             battleScript = AbsorbedByFlashFire(ctx->battlerDef);
         break;
+    case ABILITY_OPPRESSION_AURA:
+        if (ctx->moveType == TYPE_FAIRY)
+            battleScript = BattleScript_AbilityProtectedTarget;
+        break;
     case ABILITY_SOUNDPROOF:
         if (IsSoundMove(ctx->move))
             battleScript = BattleScript_AbilityProtectedTarget;
