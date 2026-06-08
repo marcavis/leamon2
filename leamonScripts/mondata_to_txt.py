@@ -622,9 +622,29 @@ def build_definition(
     return file_name, "\n".join(out)
 
 
+def list_species(sheets: dict[str, list[list[str]]]) -> list[str]:
+    """Return all species names from the Stats sheet (skipping the header row)."""
+    stats_rows = sheets.get("Stats", [])
+    names: list[str] = []
+    for row in stats_rows[1:]:  # row 0 is the header
+        name = normalize_text(row[0]) if row else ""
+        if name:
+            names.append(name)
+    return names
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate a species txt from Google Sheets")
-    parser.add_argument("species", help="Character/species name to extract, e.g. Karin")
+    parser.add_argument(
+        "species",
+        nargs="?",
+        help="Character/species name to extract, e.g. Karin. Required unless --list is used.",
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List all Pokémon/species names present in the sheet and exit.",
+    )
     parser.add_argument(
         "--google-sheet",
         help=(
@@ -638,6 +658,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if not args.list and not args.species:
+        parser.error("the following arguments are required: species (or use --list to list all species)")
+
     try:
         google_sheet = args.google_sheet or load_google_sheet_source(GOOGLE_SHEET_CONFIG_PATH)
     except (FileNotFoundError, ValueError) as exc:
@@ -649,6 +672,14 @@ def main() -> int:
     except RuntimeError as exc:
         print(f"ERROR: {exc}")
         return 1
+
+    if args.list:
+        names = list_species(sheets)
+        print(f"{len(names)} species found:")
+        for name in names:
+            print(f"  {name}")
+        return 0
+
     source_label = f"Google Sheets ({parse_google_sheet_id(google_sheet)})"
 
     file_name, content = build_definition(args.species, sheets, source_label)
