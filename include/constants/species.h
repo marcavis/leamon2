@@ -1708,6 +1708,7 @@ enum __attribute__((packed)) Species
     SPECIES_EAZALEA,
     SPECIES_CELINE,
     SPECIES_SAYO,
+    SPECIES_GONYA,
     SPECIES_CUSTOM_END,
 
     SPECIES_EGG = SPECIES_CUSTOM_END,

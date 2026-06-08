@@ -27568,3 +27568,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Sayo[] = INCGFX_U16("graphics/pokemon/sayo/shiny.pal", ".gbapal");
     const u8 gMonIcon_Sayo[] = INCGFX_U8("graphics/pokemon/sayo/icon.png", ".4bpp");
     const u8 gMonFootprint_Sayo[] = INCGFX_U8("graphics/pokemon/sayo/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Gonya[] = INCGFX_U32("graphics/pokemon/gonya/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Gonya[] = INCGFX_U32("graphics/pokemon/gonya/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Gonya[] = INCGFX_U16("graphics/pokemon/gonya/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Gonya[] = INCGFX_U16("graphics/pokemon/gonya/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Gonya[] = INCGFX_U8("graphics/pokemon/gonya/icon.png", ".4bpp");
+    const u8 gMonFootprint_Gonya[] = INCGFX_U8("graphics/pokemon/gonya/footprint.png", ".1bpp");

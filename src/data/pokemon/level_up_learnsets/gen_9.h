@@ -7090,10 +7090,8 @@ static const struct LevelUpMove sMightyenaLevelUpLearnset[] = {
 
 #if P_FAMILY_ZIGZAGOON
 static const struct LevelUpMove sZigzagoonLevelUpLearnset[] = {
-    //TODO: REmove this!
-    LEVEL_UP_MOVE( 1, MOVE_PLAY_ROUGH),
-    //LEVEL_UP_MOVE( 1, MOVE_TACKLE),
-    //LEVEL_UP_MOVE( 1, MOVE_GROWL),
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_MOVE( 1, MOVE_GROWL),
     LEVEL_UP_MOVE( 3, MOVE_SAND_ATTACK),
     LEVEL_UP_MOVE( 6, MOVE_TAIL_WHIP),
     LEVEL_UP_MOVE( 9, MOVE_COVET),

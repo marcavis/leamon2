@@ -189,3 +189,8 @@ static const struct LevelUpMove sSayoLevelUpLearnset[] = {
     // LEVEL_UP_MOVE(60, MOVE_VOID_FLAME),
     LEVEL_UP_END
 };
+
+static const struct LevelUpMove sGonyaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_END
+};
