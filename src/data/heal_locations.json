@@ -349,6 +349,12 @@
       "y": 12,
       "respawn_map": "MAP_SIX_ISLAND_POKEMON_CENTER_1F",
       "respawn_npc": "LOCALID_SIX_ISLAND_NURSE"
+    },
+    {
+      "id": "HEAL_LOCATION_PETALBURG_CITY_2",
+      "map": "MAP_PETALBURG_CITY",
+      "x": 4,
+      "y": 3
     }
   ]
 }
