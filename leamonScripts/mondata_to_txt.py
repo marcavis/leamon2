@@ -633,17 +633,182 @@ def list_species(sheets: dict[str, list[list[str]]]) -> list[str]:
     return names
 
 
+def parse_txt_fields(text: str) -> dict[str, str | list[str]]:
+    """Parse a species .txt file into a dict of field -> value.
+
+    Comment lines (starting with #) are skipped.
+    LEARNSET and EVOLUTIONS blocks are collected as lists under their key.
+    All other lines are treated as KEY = VALUE pairs.
+    """
+    fields: dict[str, str | list[str]] = {}
+    block_key: str | None = None
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        # Section header (no '=' sign, ends with ':')
+        if line.endswith(":") and "=" not in line:
+            block_key = line.rstrip(":")
+            fields[block_key] = []
+            continue
+
+        if block_key is not None:
+            # Inside a block — accumulate entries
+            cast = fields[block_key]
+            if isinstance(cast, list):
+                cast.append(line)
+            continue
+
+        # Regular KEY = VALUE line
+        if "=" in line:
+            key, _, value = line.partition("=")
+            fields[key.strip()] = value.strip()
+
+    return fields
+
+
+def diff_fields(
+    expected: dict[str, str | list[str]],
+    actual: dict[str, str | list[str]],
+) -> list[str]:
+    """Return a list of human-readable diff lines describing mismatches."""
+    diffs: list[str] = []
+    all_keys = list(expected.keys()) + [k for k in actual if k not in expected]
+
+    for key in all_keys:
+        exp_val = expected.get(key)
+        act_val = actual.get(key)
+
+        if exp_val is None:
+            diffs.append(f"  extra field in file:  {key} = {act_val!r}")
+        elif act_val is None:
+            diffs.append(f"  missing field:        {key} (expected {exp_val!r})")
+        elif isinstance(exp_val, list) and isinstance(act_val, list):
+            exp_set = set(exp_val)
+            act_set = set(act_val)
+            for entry in sorted(exp_set - act_set):
+                diffs.append(f"  {key}: missing entry  {entry!r}")
+            for entry in sorted(act_set - exp_set):
+                diffs.append(f"  {key}: extra entry    {entry!r}")
+        elif exp_val != act_val:
+            diffs.append(f"  {key}:")
+            diffs.append(f"    sheet → {exp_val!r}")
+            diffs.append(f"    file  → {act_val!r}")
+
+    return diffs
+
+
+# Status icons
+_ICON_OK = "✅"
+_ICON_OUTDATED = "⚠️ "
+_ICON_MISSING = "❌"
+_ICON_ERROR = "💥"
+
+
+def check_status(
+    sheets: dict[str, list[list[str]]],
+    data_dir: Path,
+    source_label: str,
+    *,
+    filter_name: str | None = None,
+    verbose: bool = False,
+) -> int:
+    """Check every species against its file on disk and print a status report.
+
+    If filter_name is given, only that species is checked and diffs are always shown.
+    Returns the number of species that are missing or outdated.
+    """
+    all_names = list_species(sheets)
+    if not all_names:
+        print("No species found in sheet.")
+        return 0
+
+    if filter_name is not None:
+        wanted = filter_name.casefold()
+        names = [n for n in all_names if n.casefold() == wanted]
+        if not names:
+            print(f"ERROR: {filter_name!r} not found in sheet.")
+            return 1
+    else:
+        names = all_names
+
+    counts = {_ICON_OK: 0, _ICON_OUTDATED: 0, _ICON_MISSING: 0, _ICON_ERROR: 0}
+
+    for name in names:
+        file_name = sanitize_identifier(name).lower()
+        file_path = data_dir / f"{file_name}.txt"
+
+        if not file_path.exists():
+            print(f"{_ICON_MISSING} {name}  →  {file_path.name} not found")
+            counts[_ICON_MISSING] += 1
+            continue
+
+        try:
+            _, expected_content = build_definition(name, sheets, source_label)
+        except (KeyError, ValueError) as exc:
+            print(f"{_ICON_ERROR} {name}  →  could not generate from sheet: {exc}")
+            counts[_ICON_ERROR] += 1
+            continue
+
+        expected_fields = parse_txt_fields(expected_content)
+        actual_fields = parse_txt_fields(file_path.read_text(encoding="utf-8"))
+        diffs = diff_fields(expected_fields, actual_fields)
+
+        show_diffs = verbose or filter_name is not None
+
+        if not diffs:
+            print(f"{_ICON_OK} {name}")
+            counts[_ICON_OK] += 1
+        else:
+            print(f"{_ICON_OUTDATED} {name}  →  {len(diffs)} difference(s)")
+            if show_diffs:
+                for line in diffs:
+                    print(line)
+            counts[_ICON_OUTDATED] += 1
+
+    total = len(names)
+    print()
+    print(
+        f"Summary: {counts[_ICON_OK]} up-to-date  |  "
+        f"{counts[_ICON_OUTDATED]} outdated  |  "
+        f"{counts[_ICON_MISSING]} missing  |  "
+        f"{counts[_ICON_ERROR]} error(s)  "
+        f"[{total} total]"
+    )
+    if counts[_ICON_OUTDATED] or counts[_ICON_MISSING]:
+        print("Tip: run the script with a species name to regenerate a file.")
+
+    return counts[_ICON_OUTDATED] + counts[_ICON_MISSING] + counts[_ICON_ERROR]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Generate a species txt from Google Sheets")
     parser.add_argument(
         "species",
         nargs="?",
-        help="Character/species name to extract, e.g. Karin. Required unless --list is used.",
+        help="Character/species name to extract, e.g. Karin. Required unless --list or --status is used.",
     )
     parser.add_argument(
         "--list",
         action="store_true",
         help="List all Pokémon/species names present in the sheet and exit.",
+    )
+    parser.add_argument(
+        "--status",
+        action="store_true",
+        help=(
+            "Check species against their files in data/. "
+            "With no species argument, shows a compact summary for all species. "
+            "With a species name, shows the full diff for that species. "
+            "Icons: up-to-date ✅  outdated ⚠️  missing ❌"
+        ),
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="With --status (no species name), print diffs for all outdated files.",
     )
     parser.add_argument(
         "--google-sheet",
@@ -658,8 +823,11 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if not args.list and not args.species:
-        parser.error("the following arguments are required: species (or use --list to list all species)")
+    if not args.list and not args.status and not args.species:
+        parser.error(
+            "a species name is required "
+            "(or use --list to list all species, or --status to check file sync)"
+        )
 
     try:
         google_sheet = args.google_sheet or load_google_sheet_source(GOOGLE_SHEET_CONFIG_PATH)
@@ -681,6 +849,16 @@ def main() -> int:
         return 0
 
     source_label = f"Google Sheets ({parse_google_sheet_id(google_sheet)})"
+
+    if args.status:
+        problems = check_status(
+            sheets,
+            OUTPUT_DIR,
+            source_label,
+            filter_name=args.species,
+            verbose=args.verbose,
+        )
+        return 1 if problems else 0
 
     file_name, content = build_definition(args.species, sheets, source_label)
     if args.output:
