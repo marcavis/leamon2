@@ -215,3 +215,13 @@ static const struct LevelUpMove sErensaLevelUpLearnset[] = {
     LEVEL_UP_MOVE( 6, MOVE_EMBER),
     LEVEL_UP_END
 };
+
+static const struct LevelUpMove sLucillerLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_END
+};
+
+static const struct LevelUpMove sElucillerLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_TACKLE),
+    LEVEL_UP_END
+};

@@ -27582,3 +27582,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Rensa[] = INCGFX_U16("graphics/pokemon/rensa/shiny.pal", ".gbapal");
     const u8 gMonIcon_Rensa[] = INCGFX_U8("graphics/pokemon/rensa/icon.png", ".4bpp");
     const u8 gMonFootprint_Rensa[] = INCGFX_U8("graphics/pokemon/rensa/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Lucille[] = INCGFX_U32("graphics/pokemon/lucille/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Lucille[] = INCGFX_U32("graphics/pokemon/lucille/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Lucille[] = INCGFX_U16("graphics/pokemon/lucille/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Lucille[] = INCGFX_U16("graphics/pokemon/lucille/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Lucille[] = INCGFX_U8("graphics/pokemon/lucille/icon.png", ".4bpp");
+    const u8 gMonFootprint_Lucille[] = INCGFX_U8("graphics/pokemon/lucille/footprint.png", ".1bpp");
