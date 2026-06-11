@@ -27575,3 +27575,10 @@ const u32 gObjectEventPic_Substitute[] = INCGFX_COMP("graphics/pokemon/question_
     const u16 gMonShinyPalette_Gonya[] = INCGFX_U16("graphics/pokemon/gonya/shiny.pal", ".gbapal");
     const u8 gMonIcon_Gonya[] = INCGFX_U8("graphics/pokemon/gonya/icon.png", ".4bpp");
     const u8 gMonFootprint_Gonya[] = INCGFX_U8("graphics/pokemon/gonya/footprint.png", ".1bpp");
+
+    const u32 gMonFrontPic_Rensa[] = INCGFX_U32("graphics/pokemon/rensa/anim_front.png", ".4bpp.lz");
+    const u32 gMonBackPic_Rensa[] = INCGFX_U32("graphics/pokemon/rensa/back.png", ".4bpp.lz");
+    const u16 gMonPalette_Rensa[] = INCGFX_U16("graphics/pokemon/rensa/normal.pal", ".gbapal");
+    const u16 gMonShinyPalette_Rensa[] = INCGFX_U16("graphics/pokemon/rensa/shiny.pal", ".gbapal");
+    const u8 gMonIcon_Rensa[] = INCGFX_U8("graphics/pokemon/rensa/icon.png", ".4bpp");
+    const u8 gMonFootprint_Rensa[] = INCGFX_U8("graphics/pokemon/rensa/footprint.png", ".1bpp");

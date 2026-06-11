@@ -194,3 +194,24 @@ static const struct LevelUpMove sGonyaLevelUpLearnset[] = {
     LEVEL_UP_MOVE( 1, MOVE_TACKLE),
     LEVEL_UP_END
 };
+
+static const struct LevelUpMove sCrensaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_SCRATCH),
+    LEVEL_UP_MOVE( 1, MOVE_LEER),
+    LEVEL_UP_MOVE( 6, MOVE_EMBER),
+    LEVEL_UP_END
+};
+
+static const struct LevelUpMove sRensaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_SCRATCH),
+    LEVEL_UP_MOVE( 1, MOVE_LEER),
+    LEVEL_UP_MOVE( 6, MOVE_EMBER),
+    LEVEL_UP_END
+};
+
+static const struct LevelUpMove sErensaLevelUpLearnset[] = {
+    LEVEL_UP_MOVE( 1, MOVE_SCRATCH),
+    LEVEL_UP_MOVE( 1, MOVE_LEER),
+    LEVEL_UP_MOVE( 6, MOVE_EMBER),
+    LEVEL_UP_END
+};
